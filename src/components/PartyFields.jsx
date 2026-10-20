@@ -1,0 +1,62 @@
+import { phoneLocal, vehicleLabel } from "../lib/format";
+import { Field, GhostButton, inputClass } from "./ui";
+
+export function ClienteFields({ clientes, clienteId, nombre, telefono, onChange, onCreate }) {
+  const locked = Boolean(clienteId);
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <Field label="Cliente">
+            <select className={inputClass} value={clienteId || ""} onChange={(event) => {
+              const cliente = clientes.find((item) => item.id === event.target.value);
+              onChange({
+                clienteId: event.target.value || null,
+                nombre: cliente?.nombre || "",
+                telefono: cliente?.telefono || "",
+              });
+            }}>
+              <option value="">Sin ficha, escribir a mano</option>
+              {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>)}
+            </select>
+          </Field>
+        </div>
+        <GhostButton className="w-36 shrink-0 whitespace-normal px-3 py-2 text-left text-xs leading-snug" onClick={onCreate}>Agregar nueva ficha de cliente</GhostButton>
+      </div>
+      <Field label="Nombre" hint={locked ? "Sale de la ficha elegida." : "Solo si todavía no tiene ficha."}>
+        <input className={inputClass} value={nombre || ""} disabled={locked} onChange={(event) => onChange({ clienteId, nombre: event.target.value, telefono })} />
+      </Field>
+      <Field label="Teléfono" hint="Ej: 1150649934. Sin +54.">
+        <input className={inputClass} inputMode="numeric" placeholder="1150649934" value={telefono || ""} disabled={locked} onChange={(event) => onChange({ clienteId, nombre, telefono: phoneLocal(event.target.value) })} />
+      </Field>
+    </div>
+  );
+}
+
+export function VehiculoFields({ vehiculos, vehiculoId, datos, onChange, onCreate }) {
+  const locked = Boolean(vehiculoId);
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <Field label="Vehículo en stock">
+            <select className={inputClass} value={vehiculoId || ""} onChange={(event) => {
+              const vehicle = vehiculos.find((item) => item.id === event.target.value);
+              onChange({
+                vehiculoId: event.target.value || null,
+                datos: vehicle ? `${vehicleLabel(vehicle)} ${vehicle.patente || ""}`.trim() : datos,
+              });
+            }}>
+              <option value="">No está en stock, escribir a mano</option>
+              {vehiculos.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicleLabel(vehicle)} {vehicle.patente}</option>)}
+            </select>
+          </Field>
+        </div>
+        <GhostButton className="w-36 shrink-0 whitespace-normal px-3 py-2 text-left text-xs leading-snug" onClick={onCreate}>Agregar vehículo</GhostButton>
+      </div>
+      <Field label="Nombre del vehículo" hint={locked ? "Sale de la unidad elegida." : "Si no está en stock. Ej: Gol Trend AB123CD"}>
+        <input className={inputClass} placeholder="Gol Trend AB123CD" value={datos || ""} disabled={locked} onChange={(event) => onChange({ vehiculoId, datos: event.target.value })} />
+      </Field>
+    </div>
+  );
+}
