@@ -11,7 +11,7 @@ import { ArchivoViewer } from "../components/ArchivoViewer";
 import { ETAPAS_DETAILING, ETAPAS_GESTORIA } from "../lib/constants";
 import { EXTRAS_INICIAL, MEMBRESIAS_INICIAL, PACKS_INICIAL, filasVisibles, itemsDelPack, sinMembresia } from "../lib/catalogo";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
-import { amountOnly, formatDate, money, phoneError, phoneLocal, todayISO, vehicleLabel, waLink } from "../lib/format";
+import { amountOnly, datosVehiculo, formatDate, money, phoneError, phoneLocal, todayISO, vehicleLabel, waLink } from "../lib/format";
 import { blankCliente, blankGestion, blankMovimiento, blankVehiculo } from "../lib/records";
 
 function consumeQuick(kind) {
@@ -31,7 +31,8 @@ function pasosOf(gestion) {
 }
 
 export function Gestiones({ sector = "Gestoria" }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const vePrecios = profile?.rol === "admin" || profile?.local;
   const { gestiones, clientes, vehiculos, gestion_documentos = [], movimientos_caja = [], perfiles = [], membresias = [], detailing_packs = [], detailing_pack_items = [], detailing_extras = [], save, remove } = useData();
   const [editor, setEditor] = useState(null);
   const [archivo, setArchivo] = useState(null);
@@ -294,9 +295,9 @@ export function Gestiones({ sector = "Gestoria" }) {
               ["Teléfono", gestion.cliente_telefono || "Sin teléfono"],
               ["Vehículo", gestion.vehiculo_datos || "Sin vehículo"],
               ["Ingreso", formatDate(gestion.fecha_ingreso)],
-              ["Precio", money(gestion.precio_cobrado, gestion.moneda)],
+              vePrecios ? ["Precio", money(gestion.precio_cobrado, gestion.moneda)] : null,
               ["Cobro", gestion.pagado ? "Cobrado" : "Impago"],
-            ];
+            ].filter(Boolean);
             return (
               <article key={gestion.id} className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#101010]">
                 <div className={`absolute inset-y-0 left-0 w-1 ${accent}`} />
@@ -307,8 +308,8 @@ export function Gestiones({ sector = "Gestoria" }) {
                       <h2 className="mt-1 font-display text-3xl uppercase leading-none tracking-wide">{gestion.titulo || "Sin título"}</h2>
                     </div>
                     <div className="text-right">
-                      <div className="font-display text-2xl leading-none">{money(gestion.precio_cobrado, gestion.moneda)}</div>
-                      <div className={`mt-2 text-[11px] uppercase tracking-[0.16em] ${gestion.pagado ? "text-emerald-300" : "text-amber-200"}`}>{gestion.pagado ? "Cobrado" : "Impago"}</div>
+                      {vePrecios && <div className="font-display text-2xl leading-none">{money(gestion.precio_cobrado, gestion.moneda)}</div>}
+                      <div className={`text-[11px] uppercase tracking-[0.16em] ${vePrecios ? "mt-2" : ""} ${gestion.pagado ? "text-emerald-300" : "text-amber-200"}`}>{gestion.pagado ? "Cobrado" : "Impago"}</div>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 lg:grid-cols-6">
@@ -438,7 +439,13 @@ export function Gestiones({ sector = "Gestoria" }) {
               clienteId={editor.cliente_id}
               nombre={editor.cliente_nombre}
               telefono={editor.cliente_telefono}
-              onChange={(next) => setEditor({ ...editor, cliente_id: next.clienteId, cliente_nombre: next.nombre, cliente_telefono: next.telefono })}
+              onChange={(next) => setEditor({
+                ...editor,
+                cliente_id: next.clienteId,
+                cliente_nombre: next.nombre,
+                cliente_telefono: next.telefono,
+                ...(next.vehiculoSugerido ? { vehiculo_id: next.vehiculoSugerido.vehiculoId, vehiculo_datos: next.vehiculoSugerido.datos } : {}),
+              })}
               onCreate={() => setNewCliente(true)}
             />
             <VehiculoFields
@@ -495,8 +502,14 @@ export function Gestiones({ sector = "Gestoria" }) {
         <ClienteEditor
           initial={blankCliente(user?.id)}
           onClose={() => setNewCliente(false)}
-          onSaved={(cliente) => {
-            setEditor((current) => current && ({ ...current, cliente_id: cliente.id, cliente_nombre: cliente.nombre, cliente_telefono: cliente.telefono || "" }));
+          onSaved={(cliente, vehicle) => {
+            setEditor((current) => current && ({
+              ...current,
+              cliente_id: cliente.id,
+              cliente_nombre: cliente.nombre,
+              cliente_telefono: cliente.telefono || "",
+              ...(vehicle ? { vehiculo_id: vehicle.id, vehiculo_datos: datosVehiculo(vehicle) } : {}),
+            }));
             setNewCliente(false);
           }}
         />

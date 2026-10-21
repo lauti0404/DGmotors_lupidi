@@ -13,6 +13,49 @@ import { ClienteFields, VehiculoFields } from "../components/PartyFields";
 import { VehiculoEditor } from "../components/VehiculoEditor";
 import { CutLabel, Empty, Field, GhostButton, Modal, Pill, PrimaryButton, inputClass } from "../components/ui";
 
+function haceUnaSemana() {
+  const date = new Date();
+  date.setDate(date.getDate() - 7);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function OperadorCaja({ movimientos, userId, onIngreso, onEgreso }) {
+  const desde = haceUnaSemana();
+  const propios = movimientos
+    .filter((row) => row.registrado_por === userId && String(row.fecha || "").slice(0, 10) >= desde)
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#141414]">
+      <div className="h-0.5 bg-[#DC2626]" />
+      <div className="space-y-4 p-5">
+        <p className="font-display text-[11px] uppercase tracking-[0.22em] text-[#DC2626]">Caja</p>
+        <h2 className="font-display text-3xl uppercase leading-none">Lo que cargaste</h2>
+        <p className="max-w-xl text-sm text-[#A1A1AA]">Desde acá registrás ingresos y egresos. Solo ves lo que cargaste vos en los últimos 7 días. Después deja de mostrarse. No aparecen totales ni los movimientos de otras personas.</p>
+        <div className="flex flex-wrap gap-2">
+          <PrimaryButton onClick={onIngreso}>+ Registrar Ingreso</PrimaryButton>
+          <PrimaryButton onClick={onEgreso}>+ Registrar Egreso</PrimaryButton>
+        </div>
+        {propios.length === 0 ? <p className="text-sm text-[#A1A1AA]">Esta semana todavía no cargaste nada.</p> : (
+          <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
+            {propios.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
+                <span>
+                  <span className="block">{row.concepto || "Sin descripción"}</span>
+                  <span className="text-xs text-[#A1A1AA]">{formatDate(row.fecha)} · {row.tipo}</span>
+                </span>
+                <span className={row.tipo === "Ingreso" ? "text-emerald-300" : "text-red-300"}>{money(row.monto, row.moneda)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function Caja() {
   const { user, profile } = useAuth();
   const veCaja = profile?.rol === "admin" || profile?.local;
@@ -274,10 +317,12 @@ export function Caja() {
       )}
       </>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          <PrimaryButton onClick={() => openMove(blankMovimiento(user?.id, { tipo: "Ingreso" }))}>+ Registrar Ingreso</PrimaryButton>
-          <PrimaryButton onClick={() => openMove(blankMovimiento(user?.id, { tipo: "Egreso", categoria: "Gastos Varios de Oficina" }))}>+ Registrar Egreso</PrimaryButton>
-        </div>
+        <OperadorCaja
+          movimientos={movimientos_caja}
+          userId={user?.id}
+          onIngreso={() => openMove(blankMovimiento(user?.id, { tipo: "Ingreso" }))}
+          onEgreso={() => openMove(blankMovimiento(user?.id, { tipo: "Egreso", categoria: "Gastos Varios de Oficina" }))}
+        />
       )}
 
       {archivo && <ArchivoViewer src={archivo.src} name={archivo.name} onClose={() => setArchivo(null)} />}
@@ -350,13 +395,19 @@ export function Caja() {
                 clienteId={editor.cliente_id}
                 nombre={editor.cliente_id ? (clientes.find((item) => item.id === editor.cliente_id)?.nombre || "") : (editor.cliente_manual || "")}
                 telefono={editor.cliente_id ? (clientes.find((item) => item.id === editor.cliente_id)?.telefono || "") : (editor.cliente_telefono || "")}
-                onChange={(next) => setEditor({ ...editor, cliente_id: next.clienteId, cliente_manual: next.nombre, cliente_telefono: next.telefono })}
+                onChange={(next) => setEditor({
+                  ...editor,
+                  cliente_id: next.clienteId,
+                  cliente_manual: next.nombre,
+                  cliente_telefono: next.telefono,
+                  ...(next.vehiculoSugerido ? { vehiculo_id: next.vehiculoSugerido.vehiculoId, vehiculo_manual: next.vehiculoSugerido.datos } : {}),
+                })}
                 onCreate={() => setNewCliente(true)}
               />
               <VehiculoFields
                 vehiculos={vehiculos}
                 vehiculoId={editor.vehiculo_id}
-                datos={editor.vehiculo_id ? `${vehicleLabel(vehiculos.find((item) => item.id === editor.vehiculo_id))} ${vehiculos.find((item) => item.id === editor.vehiculo_id)?.patente || ""}`.trim() : (editor.vehiculo_manual || "")}
+                datos={editor.vehiculo_manual != null ? editor.vehiculo_manual : (editor.vehiculo_id ? `${vehicleLabel(vehiculos.find((item) => item.id === editor.vehiculo_id))} ${vehiculos.find((item) => item.id === editor.vehiculo_id)?.patente || ""}`.trim() : "")}
                 onChange={(next) => setEditor({ ...editor, vehiculo_id: next.vehiculoId, vehiculo_manual: next.datos })}
                 onCreate={() => setNewVehiculo(true)}
               />
@@ -381,8 +432,14 @@ export function Caja() {
         <ClienteEditor
           initial={blankCliente(user?.id)}
           onClose={() => setNewCliente(false)}
-          onSaved={(cliente) => {
-            setEditor((current) => current && ({ ...current, cliente_id: cliente.id, cliente_manual: cliente.nombre, cliente_telefono: cliente.telefono || "" }));
+          onSaved={(cliente, vehicle) => {
+            setEditor((current) => current && ({
+              ...current,
+              cliente_id: cliente.id,
+              cliente_manual: cliente.nombre,
+              cliente_telefono: cliente.telefono || "",
+              ...(vehicle ? { vehiculo_id: vehicle.id, vehiculo_manual: `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.patente || ""}`.trim() } : {}),
+            }));
             setNewCliente(false);
           }}
         />

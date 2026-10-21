@@ -1,4 +1,4 @@
-import { phoneLocal, vehicleLabel } from "../lib/format";
+import { phoneLocal, datosVehiculo, vehiculoAsociado } from "../lib/format";
 import { ClienteSearchSelect, VehiculoSearchSelect } from "./ClienteSearchSelect";
 import { Field, GhostButton, inputClass } from "./ui";
 
@@ -16,10 +16,12 @@ export function ClienteFields({ clientes, vehiculos = [], clienteId, nombre, tel
               value={clienteId || ""}
               onChange={(id) => {
                 const cliente = clientes.find((item) => item.id === id);
+                const vehicle = vehiculoAsociado(id, vehiculos, cliente);
                 onChange({
                   clienteId: id || null,
                   nombre: cliente?.nombre || "",
                   telefono: cliente?.telefono || "",
+                  vehiculoSugerido: vehicle ? { vehiculoId: vehicle.id, datos: datosVehiculo(vehicle) } : null,
                 });
               }}
             />
@@ -38,7 +40,6 @@ export function ClienteFields({ clientes, vehiculos = [], clienteId, nombre, tel
 }
 
 export function VehiculoFields({ vehiculos, vehiculoId, datos, onChange, onCreate }) {
-  const locked = Boolean(vehiculoId);
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-2">
@@ -52,7 +53,7 @@ export function VehiculoFields({ vehiculos, vehiculoId, datos, onChange, onCreat
                 const vehicle = vehiculos.find((item) => item.id === id);
                 onChange({
                   vehiculoId: id || null,
-                  datos: vehicle ? `${vehicleLabel(vehicle)} ${vehicle.patente || ""}`.trim() : datos,
+                  datos: vehicle ? datosVehiculo(vehicle) : datos,
                 });
               }}
             />
@@ -60,8 +61,8 @@ export function VehiculoFields({ vehiculos, vehiculoId, datos, onChange, onCreat
         </div>
         <GhostButton className="w-36 shrink-0 whitespace-normal px-3 py-2 text-left text-xs leading-snug" onClick={onCreate}>Agregar vehículo</GhostButton>
       </div>
-      <Field label="Nombre del vehículo" hint={locked ? "Sale de la unidad elegida." : "Si no está en stock. Ej: Gol Trend AB123CD"}>
-        <input className={inputClass} placeholder="Gol Trend AB123CD" value={datos || ""} disabled={locked} onChange={(event) => onChange({ vehiculoId, datos: event.target.value })} />
+      <Field label="Nombre del vehículo" hint="Se puede editar o cambiar por otro. Ej: Gol Trend AB123CD">
+        <input className={inputClass} placeholder="Gol Trend AB123CD" value={datos || ""} onChange={(event) => onChange({ vehiculoId, datos: event.target.value })} />
       </Field>
     </div>
   );

@@ -141,3 +141,17 @@ export function vehicleLabel(vehicle) {
   if (!vehicle) return "";
   return [vehicle.marca, vehicle.modelo, vehicle.anio].filter(Boolean).join(" ");
 }
+
+export function datosVehiculo(vehicle) {
+  if (!vehicle) return "";
+  return `${vehicleLabel(vehicle)} ${vehicle.patente || ""}`.trim();
+}
+
+export function vehiculoAsociado(clienteId, vehiculos = [], cliente) {
+  if (!clienteId) return null;
+  const propios = vehiculos.filter((item) => item.cliente_duenio_id === clienteId);
+  if (!propios.length) return null;
+  const patente = String(cliente?.patente || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+  const porPatente = patente && propios.find((item) => String(item.patente || "").replace(/[^a-z0-9]/gi, "").toUpperCase() === patente);
+  return porPatente || propios.find((item) => item.estado !== "Vendido") || propios[0];
+}

@@ -82,11 +82,20 @@ export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, 
     setMenu(null);
   }
 
+  function marcarTodos() {
+    const tramites = tramitesDe(checklist);
+    for (const item of TRAMITES_GESTORIA) tramites[item.key] = { activo: true, obtenido: true };
+    onChange?.({ ...(checklist || {}), tramites });
+  }
+
   return (
     <div className="space-y-2">
       <input ref={inputRef} className="hidden" type="file" accept="image/*" multiple onChange={onFiles} />
       <input ref={reemplazoRef} className="hidden" type="file" accept="image/*" onChange={onReemplazo} />
-      <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">Títulos ya obtenidos:</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">Títulos ya obtenidos:</p>
+        <GhostButton className="px-3 py-1.5 text-xs" onClick={marcarTodos}>Gestoría completa</GhostButton>
+      </div>
       <div className="flex flex-wrap gap-2">
         {obtenidos.length === 0 ? <span className="text-xs text-[#A1A1AA]">Todavía ninguno</span> : obtenidos.map((item) => (
           <button key={item.key} type="button" className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100" onClick={() => setMenu({ ...item, modo: "obtenido" })}>{item.label}</button>

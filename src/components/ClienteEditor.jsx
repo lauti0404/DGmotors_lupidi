@@ -4,17 +4,20 @@ import { useData } from "../context/Data";
 import { CATEGORIAS_CLIENTE } from "../lib/constants";
 import { MEMBRESIAS_INICIAL, filasVisibles } from "../lib/catalogo";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
-import { categoryList, countOnly, dniCuit, dniCuitError, emailError, money, phoneError, phoneLocal, plateError, plateOnly } from "../lib/format";
+import { categoryList, countOnly, dniCuit, dniCuitError, emailError, money, phoneError, phoneLocal, plateError, plateOnly, vehicleLabel, vehiculoAsociado } from "../lib/format";
 import { ArchivoViewer } from "./ArchivoViewer";
 import { ClienteImagenes } from "./ClienteImagenes";
+import { VehiculoSearchSelect } from "./ClienteSearchSelect";
 import { ImageCropper } from "./ImageCropper";
 import { SelectorArchivo } from "./SelectorArchivo";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
 
 export function ClienteEditor({ initial, onClose, onSaved }) {
   const { user } = useAuth();
-  const { clientes, membresias = [], cliente_imagenes = [], save, remove } = useData();
+  const { clientes, vehiculos = [], membresias = [], cliente_imagenes = [], save, remove } = useData();
   const [editor, setEditor] = useState(initial);
+  const [vinculoId, setVinculoId] = useState(() => vehiculoAsociado(initial.id, vehiculos, initial)?.id || "");
+  const vinculoInicial = useState(() => vehiculoAsociado(initial.id, vehiculos, initial)?.id || "")[0];
   const [cropSrc, setCropSrc] = useState("");
   const [viewer, setViewer] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +63,15 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
       lavados_totales: countOnly(editor.lavados_totales),
       creado_por: editor.creado_por || user?.id || null,
     });
-    onSaved?.(saved);
+    const elegido = vehiculos.find((item) => item.id === vinculoId) || null;
+    if (vinculoInicial && vinculoInicial !== vinculoId) {
+      const anterior = vehiculos.find((item) => item.id === vinculoInicial && item.cliente_duenio_id === saved.id);
+      if (anterior) save("vehiculos", { ...anterior, cliente_duenio_id: null });
+    }
+    if (elegido && elegido.cliente_duenio_id !== saved.id) {
+      save("vehiculos", { ...elegido, cliente_duenio_id: saved.id, duenio_nombre: saved.nombre, duenio_telefono: saved.telefono || elegido.duenio_telefono });
+    }
+    onSaved?.(saved, elegido);
     onClose();
   }
 
@@ -85,6 +96,23 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
         <Field label="DNI / CUIT" hint="DNI: hasta 8 números. CUIT: 11 números. Ej: 30123456">
           <input className={inputClass} inputMode="numeric" maxLength={11} placeholder="30123456" value={editor.dni_cuit || ""} onChange={(event) => { setError(""); setEditor({ ...editor, dni_cuit: dniCuit(event.target.value) }); }} />
         </Field>
+        <div className="sm:col-span-2">
+          <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Vehículo en stock:</span>
+          <p className="mt-1 text-[11px] text-zinc-500">Opcional. Si lo asociás, aparece al elegir este cliente. Igual se puede cambiar después.</p>
+          <div className="mt-1.5">
+            <VehiculoSearchSelect
+              vehiculos={vehiculos}
+              value={vinculoId}
+              emptyLabel="Sin vehículo asociado"
+              onChange={(id) => {
+                setVinculoId(id);
+                const vehicle = vehiculos.find((item) => item.id === id);
+                if (!vehicle) return;
+                setEditor({ ...editor, vehiculo_actual: vehicleLabel(vehicle), patente: plateOnly(vehicle.patente) });
+              }}
+            />
+          </div>
+        </div>
         <Field label="Vehículo actual" hint="Opcional. Ej: Gol Trend 2016">
           <input className={inputClass} placeholder="Opcional" value={editor.vehiculo_actual || ""} onChange={(event) => setEditor({ ...editor, vehiculo_actual: event.target.value })} />
         </Field>
