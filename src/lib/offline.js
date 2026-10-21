@@ -4,6 +4,27 @@ import { supabase } from "./supabase";
 
 export const QUEUE_KEY = "dg_sync_queue";
 export const AUTH_KEY = "dg_auth_profile";
+const AUTORES_KEY = "dg_autores_caja";
+
+export function rememberAutorMovimiento(id, nombre) {
+  if (!id || !nombre || autorMovimiento(id)) return;
+  try {
+    const map = JSON.parse(localStorage.getItem(AUTORES_KEY) || "{}");
+    map[id] = nombre;
+    localStorage.setItem(AUTORES_KEY, JSON.stringify(map));
+  } catch {
+    // Si el navegador no guarda, el nombre sale de la ficha del usuario.
+  }
+}
+
+export function autorMovimiento(id) {
+  try {
+    const map = JSON.parse(localStorage.getItem(AUTORES_KEY) || "{}");
+    return map[id] || "";
+  } catch {
+    return "";
+  }
+}
 
 const CACHE = {
   clientes: "dg_cache_clientes",

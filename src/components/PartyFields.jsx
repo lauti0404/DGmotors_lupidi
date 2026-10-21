@@ -1,5 +1,5 @@
 import { phoneLocal, vehicleLabel } from "../lib/format";
-import { ClienteSearchSelect } from "./ClienteSearchSelect";
+import { ClienteSearchSelect, VehiculoSearchSelect } from "./ClienteSearchSelect";
 import { Field, GhostButton, inputClass } from "./ui";
 
 export function ClienteFields({ clientes, vehiculos = [], clienteId, nombre, telefono, onChange, onCreate }) {
@@ -43,18 +43,20 @@ export function VehiculoFields({ vehiculos, vehiculoId, datos, onChange, onCreat
     <div className="space-y-4">
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <Field label="Vehículo en stock">
-            <select className={inputClass} value={vehiculoId || ""} onChange={(event) => {
-              const vehicle = vehiculos.find((item) => item.id === event.target.value);
-              onChange({
-                vehiculoId: event.target.value || null,
-                datos: vehicle ? `${vehicleLabel(vehicle)} ${vehicle.patente || ""}`.trim() : datos,
-              });
-            }}>
-              <option value="">No está en stock, escribir a mano</option>
-              {vehiculos.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicleLabel(vehicle)} {vehicle.patente}</option>)}
-            </select>
-          </Field>
+          <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Vehículo en stock:</span>
+          <div className="mt-1.5">
+            <VehiculoSearchSelect
+              vehiculos={vehiculos}
+              value={vehiculoId || ""}
+              onChange={(id) => {
+                const vehicle = vehiculos.find((item) => item.id === id);
+                onChange({
+                  vehiculoId: id || null,
+                  datos: vehicle ? `${vehicleLabel(vehicle)} ${vehicle.patente || ""}`.trim() : datos,
+                });
+              }}
+            />
+          </div>
         </div>
         <GhostButton className="w-36 shrink-0 whitespace-normal px-3 py-2 text-left text-xs leading-snug" onClick={onCreate}>Agregar vehículo</GhostButton>
       </div>

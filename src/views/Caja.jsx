@@ -4,6 +4,7 @@ import { useData } from "../context/Data";
 import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE, categoriaVisible, categoriasElegibles, modalidadCanonica } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
 import { amountOnly, balanceOf, formatDate, money, phoneError, phoneLocal, ticketOnly, todayISO, vehicleLabel } from "../lib/format";
+import { autorMovimiento } from "../lib/offline";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
 import { ArchivoViewer } from "../components/ArchivoViewer";
 import { SelectorArchivo } from "../components/SelectorArchivo";
@@ -125,7 +126,8 @@ export function Caja() {
 
   function autor(row) {
     const perfil = perfiles.find((item) => item.id === row.registrado_por);
-    return perfil?.nombre || (profile?.id && profile.id === row.registrado_por ? profile.nombre : "") || perfil?.email || "Sin nombre";
+    const nombre = perfil?.nombre || autorMovimiento(row.id) || (profile?.id && profile.id === row.registrado_por ? (profile.nombre || profile.email) : "") || perfil?.email || "Sin nombre";
+    return { nombre, rol: perfil?.rol || "" };
   }
 
   return (
@@ -236,6 +238,7 @@ export function Caja() {
                     <th className="px-3 py-3">Descripción</th>
                     <th className="px-3 py-3">Rubro</th>
                     <th className="px-3 py-3">Tipo</th>
+                    <th className="px-3 py-3">Cargó</th>
                     <th className="px-3 py-3">Monto</th>
                     <th className="px-3 py-3">Comprobante</th>
                     <th className="px-3 py-3" />
@@ -245,9 +248,10 @@ export function Caja() {
                   {filtered.map((row) => (
                     <tr key={row.id} className="border-t border-white/5">
                       <td className="px-3 py-3 whitespace-nowrap">{formatDate(row.fecha)}</td>
-                      <td className="px-3 py-3">{row.concepto}<div className="text-xs text-[#A1A1AA]">{row.metodo_pago}</div><div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#A1A1AA]">Cargado por: {autor(row)}</div></td>
+                      <td className="px-3 py-3">{row.concepto}<div className="text-xs text-[#A1A1AA]">{row.metodo_pago}</div></td>
                       <td className="px-3 py-3">{categoriaVisible(row.categoria)}</td>
                       <td className="px-3 py-3">{row.tipo}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">{autor(row).nombre}{autor(row).rol ? <div className="text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">{autor(row).rol}</div> : null}</td>
                       <td className={`px-3 py-3 whitespace-nowrap ${row.tipo === "Ingreso" ? "text-emerald-300" : "text-red-300"}`}>{money(row.monto, row.moneda)}</td>
                       <td className="px-3 py-3">
                         {caja_comprobantes.filter((item) => item.movimiento_id === row.id && item.url_archivo).map((item) => (

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { membresiaVencida, sinMembresia } from "../lib/catalogo";
 import { modalidadCanonica } from "../lib/constants";
-import { applyLocal, deleteDemoClients, discardDemoResidue, enqueue, flushQueue, loadProfile, loadQueue, loadTable, mergeRows, prepare, pullAll, pushOp, saveQueue, saveTable, withoutResidue } from "../lib/offline";
+import { applyLocal, autorMovimiento, deleteDemoClients, discardDemoResidue, enqueue, flushQueue, loadProfile, loadQueue, loadTable, mergeRows, prepare, pullAll, pushOp, rememberAutorMovimiento, saveQueue, saveTable, withoutResidue } from "../lib/offline";
 import { supabaseConfigured } from "../lib/supabase";
 
 const DataContext = createContext(null);
@@ -106,6 +106,11 @@ export function DataProvider({ children, userId }) {
       actualizado_en: new Date().toISOString(),
       ...(localAccount ? { creado_por: null, registrado_por: null } : {}),
     });
+    if (table === "movimientos_caja") {
+      const profile = loadProfile();
+      const nombre = profile?.nombre || profile?.email || "";
+      if (nombre && !autorMovimiento(payload.id)) rememberAutorMovimiento(payload.id, nombre);
+    }
     const next = applyLocal(table, "UPSERT", payload);
     setTables((current) => ({ ...current, [table]: next }));
     void replicate(table, "UPSERT", payload);

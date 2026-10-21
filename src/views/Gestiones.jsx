@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClienteEditor } from "../components/ClienteEditor";
-import { DocumentoEditor } from "../components/DocumentoEditor";
 import { ConfirmacionCaja } from "../components/ConfirmacionCaja";
 import { ClienteFields, VehiculoFields } from "../components/PartyFields";
 import { TitulosObtenidos, TramitesGestoria } from "../components/TramitesGestoria";
@@ -9,10 +8,9 @@ import { Empty, Field, GhostButton, Modal, PrimaryButton, inputClass } from "../
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { ArchivoViewer } from "../components/ArchivoViewer";
-import { ETAPAS_DETAILING, ETAPAS_GESTORIA, TIPOS_DOCUMENTO } from "../lib/constants";
+import { ETAPAS_DETAILING, ETAPAS_GESTORIA } from "../lib/constants";
 import { EXTRAS_INICIAL, MEMBRESIAS_INICIAL, PACKS_INICIAL, filasVisibles, itemsDelPack, sinMembresia } from "../lib/catalogo";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
-import { downloadData } from "../lib/files";
 import { amountOnly, formatDate, money, phoneError, phoneLocal, todayISO, vehicleLabel, waLink } from "../lib/format";
 import { blankCliente, blankGestion, blankMovimiento, blankVehiculo } from "../lib/records";
 
@@ -36,7 +34,6 @@ export function Gestiones({ sector = "Gestoria" }) {
   const { user } = useAuth();
   const { gestiones, clientes, vehiculos, gestion_documentos = [], movimientos_caja = [], perfiles = [], membresias = [], detailing_packs = [], detailing_pack_items = [], detailing_extras = [], save, remove } = useData();
   const [editor, setEditor] = useState(null);
-  const [docEditor, setDocEditor] = useState(null);
   const [archivo, setArchivo] = useState(null);
   const packs = filasVisibles(detailing_packs, PACKS_INICIAL);
   const extras = filasVisibles(detailing_extras, EXTRAS_INICIAL);
@@ -214,18 +211,14 @@ export function Gestiones({ sector = "Gestoria" }) {
     remove("gestiones", id);
   }
 
-  function openDocumento(gestion, tipo, existing) {
-    const current = existing || (tipo === "Otro" ? null : gestion_documentos.find((item) => item.gestion_id === gestion.id && item.tipo_documento === tipo));
-    setDocEditor(current || {
-      id: crypto.randomUUID(),
-      gestion_id: gestion.id,
-      tipo_documento: tipo,
-      estado_documento: "Recibido",
-      url_archivo: "",
-      nombre_archivo: "",
-      observaciones: "",
-      creado_en: new Date().toISOString(),
-    });
+  function quitarFotos(gestionId, tipo) {
+    for (const doc of gestion_documentos.filter((item) => item.gestion_id === gestionId && item.tipo_documento === tipo)) {
+      remove("gestion_documentos", doc.id);
+    }
+  }
+
+  function guardarTramites(gestion, checklist) {
+    save("gestiones", { ...gestion, checklist });
   }
 
   async function adjuntarFotos(gestionId, tipo, files) {
@@ -248,16 +241,6 @@ export function Gestiones({ sector = "Gestoria" }) {
         window.alert(caught.message);
       }
     }
-  }
-
-  function saveDocumento(doc) {
-    const known = perfiles.some((item) => item.id === user?.id);
-    save("gestion_documentos", { ...doc, subido_por: known ? user.id : null });
-    setDocEditor(null);
-  }
-
-  function downloadDocumento(doc) {
-    downloadData(doc.url_archivo, doc.nombre_archivo || "documento");
   }
 
   function usarLavado(cliente) {
@@ -352,36 +335,15 @@ export function Gestiones({ sector = "Gestoria" }) {
                       ))}
                     </div>
                   </div>
-                  {sector === "Gestoria" && <TitulosObtenidos checklist={gestion.checklist} />}
                   {sector === "Gestoria" && (
-                    <div>
-                      <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[#A1A1AA]">Documentación con la que contamos</div>
-                      <div className="flex flex-wrap gap-2">
-                        {TIPOS_DOCUMENTO.map((tipo) => {
-                          const doc = docs.find((item) => item.tipo_documento === tipo);
-                          const ready = doc && doc.estado_documento !== "Pendiente";
-                          return (
-                            <button key={tipo} type="button" onClick={() => openDocumento(gestion, tipo)} className={`rounded-lg border px-3 py-2 text-left text-xs ${ready ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-100" : "border-white/10 bg-[#0A0A0A] text-[#A1A1AA] hover:border-white/30 hover:text-white"}`}>
-                              {tipo}{doc ? ` · ${doc.estado_documento}` : ""}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {docs.some((item) => item.url_archivo) && (
-                        <div className="mt-3 space-y-2">
-                          {docs.filter((item) => item.url_archivo).map((doc) => (
-                            <div key={doc.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0A0A0A] px-3 py-2 text-sm">
-                              <span className="min-w-0">{doc.tipo_documento}<span className="mt-0.5 block text-xs text-[#A1A1AA]">{doc.nombre_archivo || "Archivo"}{doc.observaciones ? ` · ${doc.observaciones}` : ""}</span></span>
-                              <span className="flex gap-2">
-                                <button type="button" className="text-xs text-[#A1A1AA] hover:text-white" onClick={() => openDocumento(gestion, doc.tipo_documento, doc)}>Editar</button>
-                                <button type="button" className="text-xs text-white underline" onClick={() => setArchivo({ src: doc.url_archivo, name: doc.nombre_archivo || doc.tipo_documento })}>Ver</button>
-                                <button type="button" className="text-xs text-[#A1A1AA] hover:text-white" onClick={() => downloadDocumento(doc)}>Descargar</button>
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <TitulosObtenidos
+                      checklist={gestion.checklist}
+                      documentos={docs}
+                      onChange={(checklist) => guardarTramites(gestion, checklist)}
+                      onAdd={(tipo, files) => adjuntarFotos(gestion.id, tipo, files)}
+                      onOpen={(doc) => setArchivo({ src: doc.url_archivo, name: doc.nombre_archivo || doc.tipo_documento })}
+                      onDeleteFotos={(tipo) => quitarFotos(gestion.id, tipo)}
+                    />
                   )}
                   <div className="flex flex-wrap items-center gap-2">
                     <GhostButton className="px-3 py-1.5 text-xs" onClick={() => setEditor(gestion)}>Editar</GhostButton>
@@ -550,15 +512,6 @@ export function Gestiones({ sector = "Gestoria" }) {
       )}
 
       {archivo && <ArchivoViewer src={archivo.src} name={archivo.name} onClose={() => setArchivo(null)} />}
-
-      {docEditor && (
-        <DocumentoEditor
-          initial={docEditor}
-          onClose={() => setDocEditor(null)}
-          onSaved={saveDocumento}
-          onDelete={gestion_documentos.some((item) => item.id === docEditor.id) ? () => { remove("gestion_documentos", docEditor.id); setDocEditor(null); } : null}
-        />
-      )}
 
       {caja && (
         <ConfirmacionCaja
