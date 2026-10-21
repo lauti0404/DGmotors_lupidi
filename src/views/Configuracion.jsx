@@ -3,7 +3,7 @@ import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { CatalogoComercial } from "../components/CatalogoComercial";
 import { supabase } from "../lib/supabase";
-import { InstallButton, Field, PrimaryButton, inputClass } from "../components/ui";
+import { Field, PrimaryButton, inputClass } from "../components/ui";
 
 export function Configuracion({ admin = false }) {
   const { updatePassword, user } = useAuth();
@@ -75,12 +75,6 @@ export function Configuracion({ admin = false }) {
         {error && <p className="text-sm text-red-300">{error}</p>}
         {message && <p className="text-sm text-emerald-300">{message}</p>}
       </form>
-
-      <section className="bg-[#141414] border border-white/10 rounded-2xl p-5 space-y-4">
-        <h2 className="font-display text-2xl uppercase">Instalar en este dispositivo</h2>
-        <p className="text-sm text-[#A1A1AA]">El navegador no deja instalar la app solo: tiene que haber un toque de la persona. En Chrome o Edge, este botón abre la instalación cuando el equipo lo permite. En el teléfono, también se puede usar “Agregar a inicio” desde el menú del navegador.</p>
-        <InstallButton />
-      </section>
 
       {canCreate && (
         <CatalogoComercial

@@ -8,7 +8,7 @@ import { Configuracion } from "../views/Configuracion";
 import { Dashboard } from "../views/Dashboard";
 import { Gestiones } from "../views/Gestiones";
 import { Stock } from "../views/Stock";
-import { Logo } from "./ui";
+import { InstallButton, Logo } from "./ui";
 import { SyncBadge } from "./SyncBadge";
 
 const NAV = [
@@ -28,7 +28,7 @@ const COPY = {
   detailing: ["Detailing", "Trabajos, packs y membresías."],
   clientes: ["Clientes", "Fichas, historial y WhatsApp."],
   caja: ["Caja", "Pesos, dólares y resultado por rubro."],
-  config: ["Configuración", "Precios, cuentas e instalación."],
+  config: ["Configuración", "Precios y cuentas."],
 };
 
 export function Layout() {
@@ -60,7 +60,7 @@ export function Layout() {
             <X size={18} />
           </button>
         </div>
-        <nav className="px-3 space-y-1">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 space-y-1">
           {nav.map((item) => {
             const Icon = item.icon;
             const active = section === item.id;
@@ -80,7 +80,8 @@ export function Layout() {
             );
           })}
         </nav>
-        <div className="mt-auto px-4 py-4 border-t border-white/5">
+        <div className="mt-auto shrink-0 space-y-3 border-t border-white/5 px-4 py-4">
+          <InstallButton className="w-full px-3 text-center text-xs" />
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-sm truncate">{profile?.nombre || user?.email}</div>

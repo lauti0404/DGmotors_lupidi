@@ -36,3 +36,11 @@ export function isStandalone() {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
+
+export function isIos() {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent || "";
+  const device = /iPad|iPhone|iPod/.test(ua);
+  const iPadOs = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
+  return device || iPadOs;
+}
