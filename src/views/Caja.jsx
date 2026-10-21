@@ -33,7 +33,7 @@ function OperadorCaja({ movimientos, userId, onIngreso, onEgreso }) {
       <div className="space-y-4 p-5">
         <p className="font-display text-[11px] uppercase tracking-[0.22em] text-[#DC2626]">Caja</p>
         <h2 className="font-display text-3xl uppercase leading-none">Lo que cargaste</h2>
-        <p className="max-w-xl text-sm text-[#A1A1AA]">Desde acá registrás ingresos y egresos. Solo ves lo que cargaste vos en los últimos 7 días. Después deja de mostrarse. No aparecen totales ni los movimientos de otras personas.</p>
+        <p className="max-w-xl text-sm text-[#A1A1AA]">Desde acá registrás ingresos y egresos. Acá queda lo que cargaste en los últimos 7 días.</p>
         <div className="flex flex-wrap gap-2">
           <PrimaryButton onClick={onIngreso}>+ Registrar Ingreso</PrimaryButton>
           <PrimaryButton onClick={onEgreso}>+ Registrar Egreso</PrimaryButton>
