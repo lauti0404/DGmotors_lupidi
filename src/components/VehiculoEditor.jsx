@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { ESTADOS_VEHICULO, MODALIDADES } from "../lib/constants";
-import { phoneLocal, plateOnly } from "../lib/format";
+import { amountOnly, kmOnly, phoneError, phoneLocal, plateError, plateOnly, yearError, yearOnly } from "../lib/format";
 import { blankCliente } from "../lib/records";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
 import { loadImage, removeImage } from "../lib/images";
@@ -23,6 +23,7 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
   const [image, setImage] = useState(() => initial.imagen_url || loadImage(initial.id) || "");
   const [cropSrc, setCropSrc] = useState("");
   const [newCliente, setNewCliente] = useState(null);
+  const [error, setError] = useState("");
   const exists = vehiculos.some((vehicle) => vehicle.id === editor.id);
   const ownerLocked = Boolean(editor.cliente_duenio_id);
   const modalidades = MODALIDADES.includes(editor.modalidad) ? MODALIDADES : [editor.modalidad, ...MODALIDADES];
@@ -49,7 +50,25 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
   function submit(event) {
     event.preventDefault();
     if (!editor.marca.trim() || !editor.modelo.trim()) return;
-    const saved = save("vehiculos", { ...editor, imagen_url: image || null });
+    const anio = yearOnly(editor.anio);
+    const patente = plateOnly(editor.patente);
+    const telefono = phoneLocal(editor.duenio_telefono);
+    const problem = yearError(anio) || plateError(patente) || (!ownerLocked && phoneError(telefono));
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    const saved = save("vehiculos", {
+      ...editor,
+      anio: anio || null,
+      patente,
+      kilometraje: kmOnly(editor.kilometraje) || 0,
+      duenio_telefono: telefono,
+      precio_compra: amountOnly(editor.precio_compra),
+      precio_venta: amountOnly(editor.precio_venta),
+      gastos_preparacion: amountOnly(editor.gastos_preparacion),
+      imagen_url: image || null,
+    });
     removeImage(saved.id);
     onSaved?.(saved);
     onClose();
@@ -68,11 +87,13 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             <Field label="Marca"><input className={inputClass} value={editor.marca} onChange={(event) => setEditor({ ...editor, marca: event.target.value })} required /></Field>
             <Field label="Modelo"><input className={inputClass} value={editor.modelo} onChange={(event) => setEditor({ ...editor, modelo: event.target.value })} required /></Field>
           </div>
-          <Field label="Año"><input className={inputClass} type="number" value={editor.anio ?? ""} onChange={(event) => setEditor({ ...editor, anio: event.target.value })} /></Field>
-          <Field label="Patente" hint="Solo letras y números. Ej: AB123CD">
-            <input className={inputClass} placeholder="AB123CD" value={editor.patente || ""} onChange={(event) => setEditor({ ...editor, patente: plateOnly(event.target.value) })} />
+          <Field label="Año" hint="4 números. Ej: 2016">
+            <input className={inputClass} inputMode="numeric" maxLength={4} value={editor.anio ?? ""} onChange={(event) => setEditor({ ...editor, anio: yearOnly(event.target.value) })} />
           </Field>
-          <Field label="Kilometraje"><input className={inputClass} type="number" value={editor.kilometraje ?? 0} onChange={(event) => setEditor({ ...editor, kilometraje: event.target.value })} /></Field>
+          <Field label="Patente" hint="Solo letras y números. Ej: AB123CD">
+            <input className={inputClass} maxLength={7} placeholder="AB123CD" value={editor.patente || ""} onChange={(event) => setEditor({ ...editor, patente: plateOnly(event.target.value) })} />
+          </Field>
+          <Field label="Kilometraje"><input className={inputClass} inputMode="numeric" maxLength={7} value={kmOnly(editor.kilometraje) || 0} onChange={(event) => setEditor({ ...editor, kilometraje: kmOnly(event.target.value) })} /></Field>
           <Field label="Motor" hint="Opcional. Se puede completar después.">
             <input className={inputClass} placeholder="Opcional" value={editor.motor || ""} onChange={(event) => setEditor({ ...editor, motor: event.target.value })} />
           </Field>
@@ -96,11 +117,11 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             </select>
           </Field>
           <Field label="Precio de compra" hint="Opcional. Se puede completar después.">
-            <input className={inputClass} type="number" placeholder="Opcional" value={optionalNumber(editor.precio_compra)} onChange={(event) => setEditor({ ...editor, precio_compra: event.target.value })} />
+            <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="Opcional" value={optionalNumber(editor.precio_compra)} onChange={(event) => setEditor({ ...editor, precio_compra: amountOnly(event.target.value) })} />
           </Field>
-          <Field label="Precio de venta"><input className={inputClass} type="number" value={optionalNumber(editor.precio_venta)} onChange={(event) => setEditor({ ...editor, precio_venta: event.target.value })} /></Field>
+          <Field label="Precio de venta"><input className={inputClass} inputMode="numeric" maxLength={10} value={optionalNumber(editor.precio_venta)} onChange={(event) => setEditor({ ...editor, precio_venta: amountOnly(event.target.value) })} /></Field>
           <Field label="Gastos de preparación" hint="Opcional. Se puede completar después.">
-            <input className={inputClass} type="number" placeholder="Opcional" value={optionalNumber(editor.gastos_preparacion)} onChange={(event) => setEditor({ ...editor, gastos_preparacion: event.target.value })} />
+            <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="Opcional" value={optionalNumber(editor.gastos_preparacion)} onChange={(event) => setEditor({ ...editor, gastos_preparacion: amountOnly(event.target.value) })} />
           </Field>
           <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
             <Field label="Dueño">
@@ -116,7 +137,7 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
               <input className={inputClass} value={editor.duenio_nombre || ""} disabled={ownerLocked} onChange={(event) => setEditor({ ...editor, duenio_nombre: event.target.value })} />
             </Field>
             <Field label="Teléfono del dueño" hint="Ej: 1150649934. Sin +54.">
-              <input className={inputClass} inputMode="numeric" placeholder="1150649934" value={editor.duenio_telefono || ""} disabled={ownerLocked} onChange={(event) => setEditor({ ...editor, duenio_telefono: phoneLocal(event.target.value) })} />
+              <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="1150649934" value={editor.duenio_telefono || ""} disabled={ownerLocked} onChange={(event) => setEditor({ ...editor, duenio_telefono: phoneLocal(event.target.value) })} />
             </Field>
             <Field label="Comprador">
               <select className={inputClass} value={editor.cliente_comprador_id || ""} onChange={(event) => setEditor({ ...editor, cliente_comprador_id: event.target.value || null })}>
@@ -137,6 +158,7 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             ))}
           </div>
           <Field label="Notas"><textarea className={`${inputClass} min-h-24`} value={editor.notas || ""} onChange={(event) => setEditor({ ...editor, notas: event.target.value })} /></Field>
+          {error && <p className="sm:col-span-2 text-sm text-red-300">{error}</p>}
           <div className="sm:col-span-2 flex flex-wrap justify-between gap-2">
             {exists && (
               <GhostButton onClick={() => { if (window.confirm("¿Eliminar este vehículo de este dispositivo?")) { remove("vehiculos", editor.id); removeImage(editor.id); onClose(); } }}>Eliminar</GhostButton>

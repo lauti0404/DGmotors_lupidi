@@ -5,7 +5,7 @@ import { Empty, Field, GhostButton, Modal, Pill, Plate, PrimaryButton, StatusBad
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { ESTADOS_VEHICULO, MODALIDADES } from "../lib/constants";
-import { formatKm, money, phoneLocal, vehicleLabel } from "../lib/format";
+import { amountOnly, formatKm, money, phoneError, phoneLocal, vehicleLabel } from "../lib/format";
 import { vehiclePhoto } from "../lib/images";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
 
@@ -26,6 +26,7 @@ export function Stock() {
   const [editor, setEditor] = useState(null);
   const [detail, setDetail] = useState(null);
   const [sale, setSale] = useState(null);
+  const [saleError, setSaleError] = useState("");
   const [newCliente, setNewCliente] = useState(false);
 
   useEffect(() => {
@@ -44,7 +45,13 @@ export function Stock() {
     event.preventDefault();
     const buyer = clientes.find((item) => item.id === sale.cliente_comprador_id);
     const buyerName = buyer?.nombre || sale.comprador_nombre || "";
-    const phone = !buyer && sale.comprador_telefono ? `Tel: ${sale.comprador_telefono}` : "";
+    const telefono = phoneLocal(sale.comprador_telefono);
+    const problem = !buyer && phoneError(telefono);
+    if (problem) {
+      setSaleError(problem);
+      return;
+    }
+    const phone = !buyer && telefono ? `Tel: ${telefono}` : "";
     const extra = [buyerName && !buyer ? `Comprador: ${buyerName}` : "", phone, sale.nota].filter(Boolean).join(". ");
     save("vehiculos", {
       ...sale.vehicle,
@@ -59,7 +66,7 @@ export function Stock() {
         categoria: "Autos - Venta / Comisión",
         concepto,
         moneda: sale.moneda,
-        monto: sale.monto,
+        monto: amountOnly(sale.monto) || 0,
         metodo_pago: sale.metodo,
         vehiculo_id: sale.vehicle.id,
         cliente_id: sale.cliente_comprador_id || null,
@@ -108,7 +115,7 @@ export function Stock() {
                     <GhostButton onClick={() => setDetail(vehicle)}>Ver datos</GhostButton>
                     <GhostButton onClick={() => setEditor(vehicle)}>Editar</GhostButton>
                     {vehicle.estado !== "Vendido" && (
-                      <PrimaryButton onClick={() => setSale({
+                      <PrimaryButton onClick={() => { setSaleError(""); setSale({
                         vehicle,
                         registrar: true,
                         monto: vehicle.precio_venta || 0,
@@ -117,7 +124,7 @@ export function Stock() {
                         cliente_comprador_id: vehicle.cliente_comprador_id || "",
                         comprador_nombre: "",
                         nota: "",
-                      })}>Marcar como vendido</PrimaryButton>
+                      }); }}>Marcar como vendido</PrimaryButton>
                     )}
                   </div>
                 </div>
@@ -180,13 +187,13 @@ export function Stock() {
               <input className={inputClass} value={sale.comprador_nombre || ""} disabled={buyerLocked} onChange={(event) => setSale({ ...sale, comprador_nombre: event.target.value })} />
             </Field>
             <Field label="Teléfono del comprador" hint="Ej: 1150649934. Sin +54. Queda en la nota si no hay ficha.">
-              <input className={inputClass} inputMode="numeric" placeholder="1150649934" value={sale.comprador_telefono || ""} disabled={buyerLocked} onChange={(event) => setSale({ ...sale, comprador_telefono: phoneLocal(event.target.value) })} />
+              <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="1150649934" value={sale.comprador_telefono || ""} disabled={buyerLocked} onChange={(event) => { setSaleError(""); setSale({ ...sale, comprador_telefono: phoneLocal(event.target.value) }); }} />
             </Field>
             <Field label="Nota" hint="Cualquier aclaración de la operación.">
               <textarea className={`${inputClass} min-h-20`} value={sale.nota || ""} onChange={(event) => setSale({ ...sale, nota: event.target.value })} />
             </Field>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Monto"><input className={inputClass} type="number" value={sale.monto} onChange={(event) => setSale({ ...sale, monto: event.target.value })} /></Field>
+              <Field label="Monto"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(sale.monto) || 0} onChange={(event) => setSale({ ...sale, monto: amountOnly(event.target.value) || 0 })} /></Field>
               <Field label="Moneda">
                 <select className={inputClass} value={sale.moneda} onChange={(event) => setSale({ ...sale, moneda: event.target.value })}>
                   <option>ARS</option><option>USD</option>
@@ -199,6 +206,7 @@ export function Stock() {
               </Field>
             </div>
             <p className="text-xs text-[#A1A1AA]">El ingreso queda en Autos - Venta / Comisión, con el comprador y la nota en la descripción.</p>
+            {saleError && <p className="text-sm text-red-300">{saleError}</p>}
             <PrimaryButton type="submit">Confirmar venta</PrimaryButton>
           </form>
         </Modal>

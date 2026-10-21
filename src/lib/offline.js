@@ -1,4 +1,5 @@
 import { CHECKLIST_GESTION, CHECKLIST_VEHICULO } from "./constants";
+import { dniCuit, phoneLocal, plateOnly } from "./format";
 import { supabase } from "./supabase";
 
 export const QUEUE_KEY = "dg_sync_queue";
@@ -197,6 +198,9 @@ export function prepare(table, row) {
     if (key === "fecha" || key === "fecha_ingreso" || key === "ultimo_servicio") {
       value = value ? String(value).slice(0, 10) : null;
     } else if (key === "anio") value = value === "" || value === null || value === undefined ? null : Math.round(asNumber(value));
+    else if (key === "dni_cuit") value = dniCuit(value);
+    else if (key === "telefono" || key === "cliente_telefono" || key === "duenio_telefono") value = phoneLocal(value);
+    else if (key === "patente") value = plateOnly(value);
     else if (INTS[table].includes(key)) value = Math.round(asNumber(value));
     else if (NUMBERS[table].includes(key)) value = asNumber(value);
     else if (NULLABLE.has(key)) value = emptyToNull(value);

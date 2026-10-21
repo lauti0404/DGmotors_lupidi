@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DURACIONES_MEMBRESIA, EXTRAS_INICIAL, ITEMS_INICIAL, MEMBRESIAS_INICIAL, PACKS_INICIAL, filasVisibles, itemsDelPack } from "../lib/catalogo";
-import { money } from "../lib/format";
+import { amountOnly, countOnly, money } from "../lib/format";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
 
 function nuevoId() {
@@ -179,8 +179,8 @@ export function CatalogoComercial({ membresias = [], detailing_packs = [], detai
                 {DURACIONES_MEMBRESIA.map((item) => <option key={item}>{item}</option>)}
               </select>
             </Field>
-            <Field label="Lavados del plan"><input className={inputClass} type="number" min="0" value={plan.lavados_totales ?? 0} onChange={(event) => setPlan({ ...plan, lavados_totales: event.target.value })} /></Field>
-            <Field label="Precio"><input className={inputClass} type="number" value={plan.precio ?? 0} onChange={(event) => setPlan({ ...plan, precio: event.target.value })} /></Field>
+            <Field label="Lavados del plan"><input className={inputClass} inputMode="numeric" maxLength={3} value={countOnly(plan.lavados_totales)} onChange={(event) => setPlan({ ...plan, lavados_totales: countOnly(event.target.value) })} /></Field>
+            <Field label="Precio"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(plan.precio) || 0} onChange={(event) => setPlan({ ...plan, precio: amountOnly(event.target.value) || 0 })} /></Field>
             <Field label="Moneda">
               <select className={inputClass} value={plan.moneda || "ARS"} onChange={(event) => setPlan({ ...plan, moneda: event.target.value })}>
                 <option>ARS</option><option>USD</option>
@@ -203,7 +203,7 @@ export function CatalogoComercial({ membresias = [], detailing_packs = [], detai
           <form onSubmit={guardarPack} className="grid gap-4 p-5 sm:grid-cols-2">
             <Field label="Nombre"><input className={inputClass} value={pack.nombre} onChange={(event) => setPack({ ...pack, nombre: event.target.value })} required /></Field>
             <Field label="Subtítulo"><input className={inputClass} value={pack.subtitulo || ""} onChange={(event) => setPack({ ...pack, subtitulo: event.target.value })} /></Field>
-            <Field label="Precio"><input className={inputClass} type="number" value={pack.precio ?? 0} onChange={(event) => setPack({ ...pack, precio: event.target.value })} /></Field>
+            <Field label="Precio"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(pack.precio) || 0} onChange={(event) => setPack({ ...pack, precio: amountOnly(event.target.value) || 0 })} /></Field>
             <Field label="Moneda">
               <select className={inputClass} value={pack.moneda || "ARS"} onChange={(event) => setPack({ ...pack, moneda: event.target.value })}>
                 <option>ARS</option><option>USD</option>
@@ -230,7 +230,7 @@ export function CatalogoComercial({ membresias = [], detailing_packs = [], detai
         <Modal title="Extra de detailing" onClose={() => setExtra(null)}>
           <form onSubmit={guardarExtra} className="grid gap-4 p-5 sm:grid-cols-2">
             <Field label="Nombre"><input className={inputClass} value={extra.nombre} onChange={(event) => setExtra({ ...extra, nombre: event.target.value })} required /></Field>
-            <Field label="Precio"><input className={inputClass} type="number" value={extra.precio ?? 0} onChange={(event) => setExtra({ ...extra, precio: event.target.value })} /></Field>
+            <Field label="Precio"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(extra.precio) || 0} onChange={(event) => setExtra({ ...extra, precio: amountOnly(event.target.value) || 0 })} /></Field>
             <Field label="Moneda">
               <select className={inputClass} value={extra.moneda || "ARS"} onChange={(event) => setExtra({ ...extra, moneda: event.target.value })}>
                 <option>ARS</option><option>USD</option>

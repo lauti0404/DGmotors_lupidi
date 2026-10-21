@@ -4,7 +4,7 @@ import { useData } from "../context/Data";
 import { CATEGORIAS_CLIENTE } from "../lib/constants";
 import { MEMBRESIAS_INICIAL, filasVisibles } from "../lib/catalogo";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
-import { categoryList, digitsOnly, money, phoneLocal, plateOnly } from "../lib/format";
+import { categoryList, countOnly, dniCuit, dniCuitError, emailError, money, phoneError, phoneLocal, plateError, plateOnly } from "../lib/format";
 import { ArchivoViewer } from "./ArchivoViewer";
 import { ClienteImagenes } from "./ClienteImagenes";
 import { ImageCropper } from "./ImageCropper";
@@ -17,6 +17,7 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
   const [editor, setEditor] = useState(initial);
   const [cropSrc, setCropSrc] = useState("");
   const [viewer, setViewer] = useState(false);
+  const [error, setError] = useState("");
   const exists = clientes.some((cliente) => cliente.id === editor.id);
   const planes = filasVisibles(membresias, MEMBRESIAS_INICIAL);
   const plan = planes.find((item) => item.nombre === editor.membresia);
@@ -40,7 +41,25 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
   function submit(event) {
     event.preventDefault();
     if (!editor.nombre.trim()) return;
-    const saved = save("clientes", { ...editor, creado_por: editor.creado_por || user?.id || null });
+    const dni = dniCuit(editor.dni_cuit);
+    const telefono = phoneLocal(editor.telefono);
+    const patente = plateOnly(editor.patente);
+    const email = String(editor.email || "").trim();
+    const problem = dniCuitError(dni) || phoneError(telefono) || plateError(patente) || emailError(email);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    const saved = save("clientes", {
+      ...editor,
+      dni_cuit: dni,
+      telefono,
+      patente,
+      email,
+      lavados_usados: countOnly(editor.lavados_usados),
+      lavados_totales: countOnly(editor.lavados_totales),
+      creado_por: editor.creado_por || user?.id || null,
+    });
     onSaved?.(saved);
     onClose();
   }
@@ -58,19 +77,19 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
         </div>
         <Field label="Nombre"><input className={inputClass} value={editor.nombre} onChange={(event) => setEditor({ ...editor, nombre: event.target.value })} required /></Field>
         <Field label="Teléfono" hint="Ej: 1150649934. Sin +54, se agrega solo al escribir por WhatsApp.">
-          <input className={inputClass} inputMode="numeric" placeholder="1150649934" value={editor.telefono || ""} onChange={(event) => setEditor({ ...editor, telefono: phoneLocal(event.target.value) })} />
+          <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="1150649934" value={editor.telefono || ""} onChange={(event) => setEditor({ ...editor, telefono: phoneLocal(event.target.value) })} />
         </Field>
         <Field label="Email" hint="Ej: nombre@mail.com">
           <input className={inputClass} type="email" placeholder="nombre@mail.com" value={editor.email || ""} onChange={(event) => setEditor({ ...editor, email: event.target.value.trim() })} />
         </Field>
         <Field label="DNI / CUIT" hint="DNI: hasta 8 números. CUIT: 11 números. Ej: 30123456">
-          <input className={inputClass} inputMode="numeric" placeholder="30123456" value={editor.dni_cuit || ""} onChange={(event) => setEditor({ ...editor, dni_cuit: digitsOnly(event.target.value, 11) })} />
+          <input className={inputClass} inputMode="numeric" maxLength={11} placeholder="30123456" value={editor.dni_cuit || ""} onChange={(event) => { setError(""); setEditor({ ...editor, dni_cuit: dniCuit(event.target.value) }); }} />
         </Field>
         <Field label="Vehículo actual" hint="Opcional. Ej: Gol Trend 2016">
           <input className={inputClass} placeholder="Opcional" value={editor.vehiculo_actual || ""} onChange={(event) => setEditor({ ...editor, vehiculo_actual: event.target.value })} />
         </Field>
         <Field label="Patente" hint="Opcional. Solo letras y números. Ej: AB123CD">
-          <input className={inputClass} placeholder="AB123CD" value={editor.patente || ""} onChange={(event) => setEditor({ ...editor, patente: plateOnly(event.target.value) })} />
+          <input className={inputClass} maxLength={7} placeholder="AB123CD" value={editor.patente || ""} onChange={(event) => setEditor({ ...editor, patente: plateOnly(event.target.value) })} />
         </Field>
         <div className="sm:col-span-2">
           <Field label="Categorías" hint="Se puede marcar más de una.">
@@ -96,8 +115,8 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
         </Field>
         {withPlan && (
           <>
-            <Field label="Lavados usados"><input className={inputClass} type="number" min="0" value={editor.lavados_usados ?? 0} onChange={(event) => setEditor({ ...editor, lavados_usados: event.target.value })} /></Field>
-            <Field label="Lavados del plan"><input className={inputClass} type="number" min="0" value={editor.lavados_totales ?? 0} onChange={(event) => setEditor({ ...editor, lavados_totales: event.target.value })} /></Field>
+            <Field label="Lavados usados"><input className={inputClass} inputMode="numeric" maxLength={3} value={editor.lavados_usados ?? 0} onChange={(event) => setEditor({ ...editor, lavados_usados: countOnly(event.target.value) })} /></Field>
+            <Field label="Lavados del plan"><input className={inputClass} inputMode="numeric" maxLength={3} value={editor.lavados_totales ?? 0} onChange={(event) => setEditor({ ...editor, lavados_totales: countOnly(event.target.value) })} /></Field>
             <Field label="Último servicio"><input className={inputClass} type="date" value={String(editor.ultimo_servicio || "").slice(0, 10)} onChange={(event) => setEditor({ ...editor, ultimo_servicio: event.target.value || null })} /></Field>
           </>
         )}
@@ -105,6 +124,7 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
         <div className="sm:col-span-2">
           {exists ? <ClienteImagenes clienteId={editor.id} /> : <p className="text-xs text-[#A1A1AA]">Guardá la ficha para poder sumar el DNI, la licencia u otros documentos.</p>}
         </div>
+        {error && <p className="sm:col-span-2 text-sm text-red-300">{error}</p>}
         <div className="sm:col-span-2 flex justify-between gap-2">
           {exists && (
             <GhostButton onClick={() => { if (window.confirm("¿Eliminar este cliente?")) { cliente_imagenes.filter((item) => item.cliente_id === editor.id).forEach((item) => remove("cliente_imagenes", item.id)); remove("clientes", editor.id); onClose(); } }}>Eliminar</GhostButton>

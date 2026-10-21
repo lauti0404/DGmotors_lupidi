@@ -27,7 +27,7 @@ export function ClienteFields({ clientes, clienteId, nombre, telefono, onChange,
         <input className={inputClass} value={nombre || ""} disabled={locked} onChange={(event) => onChange({ clienteId, nombre: event.target.value, telefono })} />
       </Field>
       <Field label="Teléfono" hint="Ej: 1150649934. Sin +54.">
-        <input className={inputClass} inputMode="numeric" placeholder="1150649934" value={telefono || ""} disabled={locked} onChange={(event) => onChange({ clienteId, nombre, telefono: phoneLocal(event.target.value) })} />
+        <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="1150649934" value={telefono || ""} disabled={locked} onChange={(event) => onChange({ clienteId, nombre, telefono: phoneLocal(event.target.value) })} />
       </Field>
     </div>
   );

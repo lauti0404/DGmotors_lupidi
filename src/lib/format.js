@@ -41,7 +41,73 @@ export function formatDate(iso) {
 }
 
 export function digitsOnly(value, max) {
-  return String(value || "").replace(/\D/g, "").slice(0, max);
+  const clean = String(value ?? "").replace(/\D/g, "");
+  return max ? clean.slice(0, max) : clean;
+}
+
+export function dniCuit(value) {
+  return digitsOnly(value, 11);
+}
+
+export function dniCuitError(value) {
+  const digits = dniCuit(value);
+  if (!digits) return "";
+  if (digits.length === 7 || digits.length === 8 || digits.length === 11) return "";
+  return "El DNI lleva 7 u 8 números. El CUIT, 11. Con otra cantidad no se guarda.";
+}
+
+export function phoneError(value) {
+  const digits = phoneLocal(value);
+  if (!digits) return "";
+  if (digits.length === 10) return "";
+  return "El teléfono lleva 10 números, sin el +54. Ej: 1150649934.";
+}
+
+export function plateError(value) {
+  const plate = plateOnly(value);
+  if (!plate) return "";
+  if (plate.length === 6 || plate.length === 7) return "";
+  return "La patente lleva 6 o 7 letras y números. Ej: AB123CD.";
+}
+
+export function emailError(value) {
+  const email = String(value || "").trim();
+  if (!email) return "";
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "";
+  return "El email tiene que ser como nombre@mail.com.";
+}
+
+export function yearOnly(value) {
+  return digitsOnly(value, 4);
+}
+
+export function yearError(value) {
+  const year = yearOnly(value);
+  if (!year) return "";
+  const number = Number(year);
+  const max = new Date().getFullYear() + 1;
+  if (year.length === 4 && number >= 1950 && number <= max) return "";
+  return `El año tiene 4 números, entre 1950 y ${max}.`;
+}
+
+export function kmOnly(value) {
+  return digitsOnly(value, 7);
+}
+
+export function amountOnly(value) {
+  const digits = String(value ?? "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (!digits) return "";
+  return digits.slice(0, 10);
+}
+
+export function countOnly(value) {
+  const digits = digitsOnly(value, 3);
+  if (!digits) return "0";
+  return String(Number(digits));
+}
+
+export function ticketOnly(value) {
+  return String(value || "").replace(/[^0-9-]/g, "").slice(0, 17);
 }
 
 export function phoneLocal(value) {

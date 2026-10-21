@@ -10,7 +10,7 @@ import { ArchivoViewer } from "../components/ArchivoViewer";
 import { CHECKLIST_GESTION_LABELS, ETAPAS_DETAILING, ETAPAS_GESTORIA, TIPOS_DOCUMENTO } from "../lib/constants";
 import { EXTRAS_INICIAL, MEMBRESIAS_INICIAL, PACKS_INICIAL, filasVisibles, itemsDelPack, sinMembresia } from "../lib/catalogo";
 import { downloadData } from "../lib/files";
-import { formatDate, money, todayISO, vehicleLabel, waLink } from "../lib/format";
+import { amountOnly, formatDate, money, phoneError, phoneLocal, todayISO, vehicleLabel, waLink } from "../lib/format";
 import { blankCliente, blankGestion, blankMovimiento, blankVehiculo } from "../lib/records";
 
 function consumeQuick(kind) {
@@ -42,6 +42,7 @@ export function Gestiones({ sector = "Gestoria" }) {
   const [cobro, setCobro] = useState(null);
   const [newCliente, setNewCliente] = useState(false);
   const [newVehiculo, setNewVehiculo] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     const kind = sector === "Detailing" ? "detailing" : "gestion";
@@ -67,7 +68,18 @@ export function Gestiones({ sector = "Gestoria" }) {
   function submit(event) {
     event.preventDefault();
     if (!editor.titulo.trim()) return;
-    save("gestiones", linkPeople(editor));
+    const telefono = phoneLocal(editor.cliente_telefono);
+    const problem = !editor.cliente_id && phoneError(telefono);
+    if (problem) {
+      setFormError(problem);
+      return;
+    }
+    save("gestiones", linkPeople({
+      ...editor,
+      cliente_telefono: telefono,
+      costo_interno: amountOnly(editor.costo_interno) || 0,
+      precio_cobrado: amountOnly(editor.precio_cobrado) || 0,
+    }));
     setEditor(null);
   }
 
@@ -88,7 +100,7 @@ export function Gestiones({ sector = "Gestoria" }) {
       categoria: cobro.sector === "Detailing" ? "Detailing" : "Gestoría",
       concepto: cobro.titulo || (cobro.sector === "Detailing" ? "Detailing" : "Gestoría"),
       moneda: cobro.moneda,
-      monto: cobro.precio_cobrado,
+      monto: amountOnly(cobro.precio_cobrado) || 0,
       metodo_pago: cobro.metodo,
       vehiculo_id: cobro.vehiculo_id,
       gestion_id: cobro.id,
@@ -350,8 +362,8 @@ export function Gestiones({ sector = "Gestoria" }) {
               onChange={(next) => setEditor({ ...editor, vehiculo_id: next.vehiculoId, vehiculo_datos: next.datos })}
               onCreate={() => setNewVehiculo(true)}
             />
-            <Field label="Costo interno"><input className={inputClass} type="number" value={editor.costo_interno ?? 0} onChange={(event) => setEditor({ ...editor, costo_interno: event.target.value })} /></Field>
-            <Field label="Precio cobrado"><input className={inputClass} type="number" value={editor.precio_cobrado ?? 0} onChange={(event) => setEditor({ ...editor, precio_cobrado: event.target.value })} /></Field>
+            <Field label="Costo interno"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(editor.costo_interno) || 0} onChange={(event) => setEditor({ ...editor, costo_interno: amountOnly(event.target.value) || 0 })} /></Field>
+            <Field label="Precio cobrado"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(editor.precio_cobrado) || 0} onChange={(event) => setEditor({ ...editor, precio_cobrado: amountOnly(event.target.value) || 0 })} /></Field>
             <Field label="Moneda">
               <select className={inputClass} value={editor.moneda} onChange={(event) => setEditor({ ...editor, moneda: event.target.value })}>
                 <option>ARS</option><option>USD</option>
@@ -372,6 +384,7 @@ export function Gestiones({ sector = "Gestoria" }) {
               Ya está cobrado
             </label>
             <Field label="Notas"><textarea className={`${inputClass} min-h-24`} value={editor.notas || ""} onChange={(event) => setEditor({ ...editor, notas: event.target.value })} /></Field>
+            {formError && <p className="sm:col-span-2 text-sm text-red-300">{formError}</p>}
             <div className="sm:col-span-2 flex flex-wrap justify-between gap-2">
               {gestiones.some((gestion) => gestion.id === editor.id) && (
                 <GhostButton onClick={() => { if (window.confirm("¿Eliminar esta gestión?")) { removeGestion(editor.id); setEditor(null); } }}>Eliminar</GhostButton>
@@ -422,7 +435,7 @@ export function Gestiones({ sector = "Gestoria" }) {
           <form onSubmit={confirmCobro} className="p-5 space-y-4">
             <p className="text-sm text-[#A1A1AA]">Se crea un ingreso en {cobro.sector === "Detailing" ? "Detailing" : "Gestoría"} y la gestión queda cobrada.</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Monto"><input className={inputClass} type="number" value={cobro.precio_cobrado ?? 0} onChange={(event) => setCobro({ ...cobro, precio_cobrado: event.target.value })} /></Field>
+              <Field label="Monto"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(cobro.precio_cobrado) || 0} onChange={(event) => setCobro({ ...cobro, precio_cobrado: amountOnly(event.target.value) || 0 })} /></Field>
               <Field label="Moneda">
                 <select className={inputClass} value={cobro.moneda} onChange={(event) => setCobro({ ...cobro, moneda: event.target.value })}>
                   <option>ARS</option><option>USD</option>

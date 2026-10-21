@@ -3,7 +3,7 @@ import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
-import { balanceOf, formatDate, money, todayISO, vehicleLabel } from "../lib/format";
+import { amountOnly, balanceOf, formatDate, money, phoneError, phoneLocal, ticketOnly, todayISO, vehicleLabel } from "../lib/format";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
 import { ArchivoViewer } from "../components/ArchivoViewer";
 import { SelectorArchivo } from "../components/SelectorArchivo";
@@ -25,6 +25,7 @@ export function Caja() {
   const [editor, setEditor] = useState(null);
   const [comprobante, setComprobante] = useState({ tipo_comprobante: "Ticket / Recibo", nro_comprobante: "", url_archivo: "", nombre_archivo: "" });
   const [archivo, setArchivo] = useState(null);
+  const [formError, setFormError] = useState("");
   const [newCliente, setNewCliente] = useState(false);
   const [newVehiculo, setNewVehiculo] = useState(false);
 
@@ -75,20 +76,26 @@ export function Caja() {
 
   function submit(event) {
     event.preventDefault();
+    const telefono = phoneLocal(editor.cliente_telefono);
+    const problem = !editor.cliente_id && phoneError(telefono);
+    if (problem) {
+      setFormError(problem);
+      return;
+    }
     const manual = [
-      !editor.cliente_id && editor.cliente_manual ? `Cliente: ${editor.cliente_manual}${editor.cliente_telefono ? ` (${editor.cliente_telefono})` : ""}` : "",
+      !editor.cliente_id && editor.cliente_manual ? `Cliente: ${editor.cliente_manual}${telefono ? ` (${telefono})` : ""}` : "",
       !editor.vehiculo_id && editor.vehiculo_manual ? `Vehículo: ${editor.vehiculo_manual}` : "",
     ].filter(Boolean);
     const concepto = [editor.concepto.trim(), ...manual].filter(Boolean).join(". ");
     if (!concepto || !editor.categoria) return;
-    const saved = save("movimientos_caja", { ...editor, concepto, fecha: editor.fecha || todayISO() });
+    const saved = save("movimientos_caja", { ...editor, cliente_telefono: telefono, monto: amountOnly(editor.monto) || 0, concepto, fecha: editor.fecha || todayISO() });
     if (comprobante.url_archivo) {
       const known = perfiles.some((item) => item.id === user?.id);
       save("caja_comprobantes", {
         id: comprobante.id || crypto.randomUUID(),
         movimiento_id: saved.id,
         tipo_comprobante: comprobante.tipo_comprobante || "Ticket / Recibo",
-        nro_comprobante: comprobante.nro_comprobante || "",
+        nro_comprobante: ticketOnly(comprobante.nro_comprobante),
         url_archivo: comprobante.url_archivo,
         nombre_archivo: comprobante.nombre_archivo || "",
         subido_por: known ? user.id : null,
@@ -281,7 +288,7 @@ export function Caja() {
                 <input className={inputClass} placeholder="Seña del Gol Trend" value={editor.concepto || ""} onChange={(event) => setEditor({ ...editor, concepto: event.target.value })} required />
               </Field>
             </div>
-            <Field label="Monto"><input className={inputClass} type="number" value={editor.monto ?? 0} onChange={(event) => setEditor({ ...editor, monto: event.target.value })} required /></Field>
+            <Field label="Monto"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(editor.monto) || 0} onChange={(event) => setEditor({ ...editor, monto: amountOnly(event.target.value) || 0 })} required /></Field>
             <Field label="Moneda">
               <select className={inputClass} value={editor.moneda} onChange={(event) => setEditor({ ...editor, moneda: event.target.value })}>
                 <option>ARS</option><option>USD</option>
@@ -297,7 +304,7 @@ export function Caja() {
                   </select>
                 </Field>
                 <Field label="Número" hint="Opcional. Ej: 0001-00004521">
-                  <input className={inputClass} placeholder="0001-00004521" value={comprobante.nro_comprobante || ""} onChange={(event) => setComprobante({ ...comprobante, nro_comprobante: event.target.value })} />
+                  <input className={inputClass} inputMode="numeric" maxLength={17} placeholder="0001-00004521" value={comprobante.nro_comprobante || ""} onChange={(event) => setComprobante({ ...comprobante, nro_comprobante: ticketOnly(event.target.value) })} />
                 </Field>
                 <Field label="Archivo" hint="Galería, fotos, cámara o un PDF desde archivos.">
                   <SelectorArchivo pdf onFile={onComprobante} />
@@ -338,6 +345,7 @@ export function Caja() {
                 {gestiones.map((gestion) => <option key={gestion.id} value={gestion.id}>{gestion.sector}: {gestion.titulo}</option>)}
               </select>
             </Field>
+            {formError && <p className="sm:col-span-2 text-sm text-red-300">{formError}</p>}
             <div className="sm:col-span-2 flex justify-between gap-2">
               {movimientos_caja.some((row) => row.id === editor.id) && (
                 <GhostButton onClick={() => { if (window.confirm("¿Eliminar este movimiento?")) { caja_comprobantes.filter((item) => item.movimiento_id === editor.id).forEach((item) => remove("caja_comprobantes", item.id)); remove("movimientos_caja", editor.id); setEditor(null); } }}>Eliminar</GhostButton>
