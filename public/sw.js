@@ -1,4 +1,4 @@
-const CACHE = "dg-motors-erp-v1";
+const CACHE = "dg-motors-erp-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -24,6 +24,15 @@ self.addEventListener("activate", (event) => {
 
 async function fromCacheOrNetwork(request) {
   const cache = await caches.open(CACHE);
+  if (request.mode === "navigate") {
+    try {
+      const fresh = await fetch(request);
+      if (fresh && fresh.ok) cache.put(request, fresh.clone());
+      return fresh;
+    } catch {
+      return (await cache.match(request)) || (await cache.match("/index.html")) || new Response("Sin conexión", { status: 503 });
+    }
+  }
   const cached = await cache.match(request);
   const network = fetch(request)
     .then((response) => {

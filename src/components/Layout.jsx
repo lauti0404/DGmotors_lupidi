@@ -52,7 +52,7 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-[#151515] text-white">
       {open && <div className="fixed inset-0 z-30 bg-black/70 lg:hidden" onClick={() => setOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      <aside className={`fixed top-0 left-0 z-40 h-dvh w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="h-0.5 bg-[#DC2626]" />
         <div className="relative px-5 py-6 flex items-center justify-center">
           <Logo className="h-36 w-36" />
@@ -80,7 +80,7 @@ export function Layout() {
             );
           })}
         </nav>
-        <div className="mt-auto shrink-0 space-y-3 border-t border-white/5 px-4 py-4">
+        <div className="mt-auto shrink-0 space-y-3 border-t border-white/5 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <InstallButton className="w-full px-3 text-center text-xs" />
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">

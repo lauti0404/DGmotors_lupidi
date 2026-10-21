@@ -213,14 +213,16 @@ export function InstallButton({ className = "" }) {
   useEffect(() => onInstallable(setInstallable), []);
   useEffect(() => setStandalone(isStandalone()), []);
 
-  if (standalone) return null;
-
   return (
     <>
       <button
         type="button"
         className={`rounded-full border border-[#DC2626]/60 px-4 py-2.5 text-sm text-white hover:bg-[#DC2626] ${className}`}
         onClick={() => {
+          if (standalone) {
+            window.alert("DG Motors ya está instalada en este dispositivo.");
+            return;
+          }
           if (isIos()) {
             setGuide(true);
             return;
