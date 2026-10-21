@@ -31,7 +31,7 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#151515] text-white grid place-items-center px-4">
+    <div className="safe-top safe-bottom min-h-dvh bg-[#0A0A0A] text-white grid place-items-center px-4">
       <div className="w-full max-w-md">
         <div className="h-0.5 bg-[#DC2626] mb-8" />
         <Logo className="h-52 w-52" />
@@ -95,7 +95,7 @@ export function NewPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-[#151515] text-white grid place-items-center px-4">
+    <div className="safe-top safe-bottom min-h-dvh bg-[#0A0A0A] text-white grid place-items-center px-4">
       <div className="w-full max-w-md">
       <Logo className="mb-6 h-52 w-52" />
       <form onSubmit={submit} className="bg-[#141414] border border-white/10 rounded-2xl p-5 space-y-4">

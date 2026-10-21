@@ -11,17 +11,77 @@
   --color-dg-silver: #a1a1aa;
 }
 
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
 html {
   scroll-behavior: smooth;
+  background: #0A0A0A;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #151515;
   color: #ffffff;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 12px);
+}
+
+.safe-top-header {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  background: #0A0A0A;
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+.safe-drawer-top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  background: #0A0A0A;
+}
+
+.safe-drawer-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+.safe-modal {
+  padding-top: max(env(safe-area-inset-top, 20px), 20px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+
+html.ios-standalone .safe-top-header {
+  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 12px));
+}
+
+html.ios-standalone .safe-drawer-top {
+  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 16px));
+}
+
+html.ios-standalone .safe-modal {
+  padding-top: max(48px, env(safe-area-inset-top, 20px));
+}
+
+@media (min-width: 1024px) {
+  .safe-top-header,
+  html.ios-standalone .safe-top-header {
+    padding-top: 0;
+    background: #0A0A0A;
+  }
+
+  .safe-drawer-top,
+  html.ios-standalone .safe-drawer-top {
+    padding-top: 0;
+    background: transparent;
+  }
 }
 
 #root {

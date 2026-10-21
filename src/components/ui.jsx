@@ -47,8 +47,8 @@ export function Modal({ title, subtitle, onClose, children, wide = false }) {
   return createPortal(
     <div className="fixed inset-0 z-[80] overflow-y-auto">
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex min-h-full items-center justify-center p-4 sm:p-6 pointer-events-none">
-        <div className={`pointer-events-auto w-full ${wide ? "max-w-5xl" : "max-w-2xl"} max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col bg-[#141414] border border-white/10 rounded-2xl shadow-2xl shadow-black`}>
+      <div className="safe-modal relative z-10 flex min-h-full items-center justify-center px-4 sm:px-6 pointer-events-none">
+        <div className={`pointer-events-auto w-full ${wide ? "max-w-5xl" : "max-w-2xl"} max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-hidden flex flex-col bg-[#141414] border border-white/10 rounded-2xl shadow-2xl shadow-black`}>
           <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-white/10">
             <div>
               <h2 className="font-display text-2xl tracking-wide uppercase">{title}</h2>

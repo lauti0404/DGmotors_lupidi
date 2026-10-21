@@ -102,12 +102,14 @@ export function Layout() {
     <div className="min-h-screen bg-[#151515] text-white">
       {open && <div className="fixed inset-0 z-30 touch-none bg-black/70 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`fixed top-0 left-0 z-40 h-dvh w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
-        <div className="h-0.5 bg-[#DC2626]" />
-        <div className="relative px-5 py-6 flex items-center justify-center">
-          <Logo className="h-36 w-36" />
-          <button type="button" className="lg:hidden absolute right-4 text-[#A1A1AA]" onClick={() => setOpen(false)} aria-label="Cerrar menú">
-            <X size={18} />
-          </button>
+        <div className="safe-drawer-top">
+          <div className="h-0.5 bg-[#DC2626]" />
+          <div className="relative flex items-center justify-center px-5 pb-4 lg:py-6">
+            <Logo className="h-36 w-36" />
+            <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-[#A1A1AA] lg:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú">
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 space-y-1">
           {nav.map((item) => {
@@ -129,7 +131,7 @@ export function Layout() {
             );
           })}
         </nav>
-        <div className="mt-auto shrink-0 space-y-3 border-t border-white/5 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="safe-drawer-bottom mt-auto shrink-0 space-y-3 border-t border-white/5 px-4 pt-4">
           <InstallButton className="w-full px-3 text-center text-xs" />
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -144,7 +146,7 @@ export function Layout() {
       </aside>
 
       <div className="lg:pl-[270px]">
-        <header className="sticky top-0 z-20 bg-[#151515]/90 backdrop-blur border-b border-white/5">
+        <header className="safe-top-header sticky top-0 z-20 border-b border-white/5 bg-[#0A0A0A]">
           <div className="h-0.5 bg-[#DC2626]" />
           <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
