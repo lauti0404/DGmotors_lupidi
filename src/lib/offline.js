@@ -236,7 +236,7 @@ export function prepare(table, row) {
     const previos = row.checklist || {};
     const resto = { ...previos };
     for (const key of ["form_08", "cedula", "titulo", "policial", "libre_deuda", "ceta", "tramites"]) delete resto[key];
-    payload.checklist = { ...resto, tramites: tramitesDe(previos) };
+    payload.checklist = { ...resto, tramites: tramitesDe(previos), policial_opcional: true };
     payload.pagado = Boolean(row.pagado);
   }
   if (COLUMNS[table].includes("actualizado_en") && !payload.actualizado_en) payload.actualizado_en = new Date().toISOString();

@@ -342,6 +342,7 @@ export function Gestiones({ sector = "Gestoria" }) {
                       onChange={(checklist) => guardarTramites(gestion, checklist)}
                       onAdd={(tipo, files) => adjuntarFotos(gestion.id, tipo, files)}
                       onOpen={(doc) => setArchivo({ src: doc.url_archivo, name: doc.nombre_archivo || doc.tipo_documento })}
+                      onDeleteFoto={(doc) => remove("gestion_documentos", doc.id)}
                       onDeleteFotos={(tipo) => quitarFotos(gestion.id, tipo)}
                     />
                   )}

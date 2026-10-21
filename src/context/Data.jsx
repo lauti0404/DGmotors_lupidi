@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { membresiaVencida, sinMembresia } from "../lib/catalogo";
-import { modalidadCanonica } from "../lib/constants";
+import { modalidadCanonica, tramitesDe } from "../lib/constants";
 import { applyLocal, autorMovimiento, deleteDemoClients, discardDemoResidue, enqueue, flushQueue, loadProfile, loadQueue, loadTable, mergeRows, prepare, pullAll, pushOp, rememberAutorMovimiento, saveQueue, saveTable, withoutResidue } from "../lib/offline";
 import { supabaseConfigured } from "../lib/supabase";
 
@@ -137,6 +137,15 @@ export function DataProvider({ children, userId }) {
       save("vehiculos", { ...vehicle, modalidad });
     }
   }, [tables.vehiculos, save]);
+
+  useEffect(() => {
+    for (const gestion of tables.gestiones || []) {
+      if (gestion.sector !== "Gestoria" || gestion.checklist?.policial_opcional) continue;
+      const tramites = tramitesDe(gestion.checklist);
+      if (tramites.policial && !tramites.policial.obtenido) tramites.policial = { activo: false, obtenido: false };
+      save("gestiones", { ...gestion, checklist: { ...(gestion.checklist || {}), tramites, policial_opcional: true } });
+    }
+  }, [tables.gestiones, save]);
 
   const value = useMemo(() => ({
     ...tables,

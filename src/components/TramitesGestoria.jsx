@@ -6,23 +6,33 @@ function fotosDe(documentos, label) {
   return (documentos || []).filter((doc) => doc.tipo_documento === label && doc.url_archivo);
 }
 
-function Miniaturas({ fotos, onOpen }) {
+function Miniaturas({ fotos, onOpen, onRemove, onReplace }) {
   if (!fotos.length) return <p className="text-sm text-[#A1A1AA]">Todavía no hay imágenes.</p>;
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-3">
       {fotos.map((doc) => (
-        <button key={doc.id} type="button" className="h-20 w-20 overflow-hidden rounded-lg border border-white/10" onClick={() => onOpen?.(doc)} aria-label="Ver imagen">
-          {String(doc.url_archivo).startsWith("data:image/") ? <img src={doc.url_archivo} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[10px] text-[#A1A1AA]">Foto</span>}
-        </button>
+        <div key={doc.id} className="space-y-1">
+          <button type="button" className="block h-20 w-20 overflow-hidden rounded-lg border border-white/10" onClick={() => onOpen?.(doc)} aria-label="Ver imagen">
+            {String(doc.url_archivo).startsWith("data:image/") ? <img src={doc.url_archivo} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-[10px] text-[#A1A1AA]">Foto</span>}
+          </button>
+          {(onRemove || onReplace) && (
+            <div className="flex gap-1">
+              {onReplace && <button type="button" className="text-[10px] uppercase tracking-[0.08em] text-[#A1A1AA] hover:text-white" onClick={() => onReplace(doc)}>Cambiar</button>}
+              {onRemove && <button type="button" className="text-[10px] uppercase tracking-[0.08em] text-[#A1A1AA] hover:text-white" onClick={() => onRemove(doc)}>Sacar</button>}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );
 }
 
-export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, onOpen, onDeleteFotos }) {
+export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, onOpen, onDeleteFoto, onDeleteFotos }) {
   const { obtenidos, pendientes } = resumenTramites(checklist);
   const [menu, setMenu] = useState(null);
   const inputRef = useRef(null);
+  const reemplazoRef = useRef(null);
+  const reemplazoId = useRef("");
   const fotos = menu ? fotosDe(documentos, menu.label) : [];
 
   function cambiar(key, obtenido) {
@@ -35,6 +45,27 @@ export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, 
     const files = [...(event.target.files || [])];
     event.target.value = "";
     if (menu && files.length) await onAdd?.(menu.label, files);
+  }
+
+  async function onReemplazo(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    const id = reemplazoId.current;
+    reemplazoId.current = "";
+    const actual = fotos.find((doc) => doc.id === id);
+    if (!file || !menu || !actual) return;
+    await onAdd?.(menu.label, [file]);
+    onDeleteFoto?.(actual);
+  }
+
+  function pedirCambio(doc) {
+    reemplazoId.current = doc.id;
+    reemplazoRef.current?.click();
+  }
+
+  function sacarFoto(doc) {
+    if (!window.confirm("¿Sacar esta imagen?")) return;
+    onDeleteFoto?.(doc);
   }
 
   function pasarAPendiente() {
@@ -54,6 +85,7 @@ export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, 
   return (
     <div className="space-y-2">
       <input ref={inputRef} className="hidden" type="file" accept="image/*" multiple onChange={onFiles} />
+      <input ref={reemplazoRef} className="hidden" type="file" accept="image/*" onChange={onReemplazo} />
       <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">Títulos ya obtenidos:</p>
       <div className="flex flex-wrap gap-2">
         {obtenidos.length === 0 ? <span className="text-xs text-[#A1A1AA]">Todavía ninguno</span> : obtenidos.map((item) => (
@@ -79,7 +111,8 @@ export function TitulosObtenidos({ checklist, documentos = [], onChange, onAdd, 
       {menu?.modo === "obtenido" && (
         <Modal title={menu.label} subtitle="Título ya obtenido" onClose={() => setMenu(null)}>
           <div className="space-y-4 p-5">
-            <Miniaturas fotos={fotos} onOpen={onOpen} />
+            <GhostButton onClick={() => inputRef.current?.click()}>Adjuntar imagen</GhostButton>
+            <Miniaturas fotos={fotos} onOpen={onOpen} onRemove={sacarFoto} onReplace={pedirCambio} />
             <GhostButton onClick={pasarAPendiente}>Pasar a pendientes</GhostButton>
           </div>
         </Modal>
@@ -93,10 +126,8 @@ export function TramitesGestoria({ checklist, documentos = [], onChange, onAdd, 
 
   function update(key, patch) {
     const next = tramitesDe(checklist);
-    const item = TRAMITES_GESTORIA.find((row) => row.key === key);
     const current = next[key];
     const merged = { ...current, ...patch };
-    if (item?.requerido) merged.activo = true;
     if (!merged.activo) merged.obtenido = false;
     if (merged.obtenido) merged.activo = true;
     next[key] = merged;
@@ -118,13 +149,9 @@ export function TramitesGestoria({ checklist, documentos = [], onChange, onAdd, 
                 type="checkbox"
                 className="mt-1"
                 checked={row.activo}
-                disabled={item.requerido}
                 onChange={(event) => update(item.key, { activo: event.target.checked })}
               />
-              <span>
-                {item.label}
-                {item.requerido && <span className="mt-0.5 block text-[10px] uppercase tracking-[0.14em] text-[#A1A1AA]">Incluido siempre</span>}
-              </span>
+              <span>{item.label}</span>
             </label>
           );
         })}
@@ -135,6 +162,7 @@ export function TramitesGestoria({ checklist, documentos = [], onChange, onAdd, 
         onChange={onChange}
         onAdd={onAdd}
         onOpen={onOpen}
+        onDeleteFoto={onDelete}
         onDeleteFotos={borrarDelTipo}
       />
     </div>

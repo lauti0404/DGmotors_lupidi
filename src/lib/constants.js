@@ -121,7 +121,7 @@ export function rubroDe(categoria) {
 export const CHECKLIST_VEHICULO = { detailing: false, fotos: false, publicado: false };
 
 export const TRAMITES_GESTORIA = [
-  { key: "policial", label: "Policial", requerido: true },
+  { key: "policial", label: "Policial" },
   { key: "transferencia", label: "Transferencia" },
   { key: "informe_dominio", label: "Informe de dominio e histórico" },
   { key: "informe_suats", label: "Informe SUATS" },
@@ -137,7 +137,7 @@ export function tramitesIniciales() {
 }
 
 export function checklistGestionInicial() {
-  return { tramites: tramitesIniciales() };
+  return { tramites: tramitesIniciales(), policial_opcional: true };
 }
 
 export function tramitesDe(checklist) {
@@ -146,9 +146,8 @@ export function tramitesDe(checklist) {
   if (stored && typeof stored === "object") {
     for (const item of TRAMITES_GESTORIA) {
       const row = stored[item.key] || {};
-      const activo = item.requerido ? true : Boolean(row.activo);
       const obtenido = Boolean(row.obtenido);
-      base[item.key] = { activo: activo || obtenido, obtenido: obtenido && (activo || obtenido) };
+      base[item.key] = { activo: Boolean(row.activo) || obtenido, obtenido };
     }
     return base;
   }
