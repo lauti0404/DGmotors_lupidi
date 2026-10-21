@@ -1,8 +1,9 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useEffect, useMemo, useState } from "react";
-import { RUBROS } from "../lib/constants";
+import { RUBROS, modalidadCanonica } from "../lib/constants";
 import { dismissAlert, syncAlerts } from "../lib/alerts";
 import { balanceOf, formatDateTime, formatWhen, money } from "../lib/format";
+import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { CutLabel, Field, PrimaryButton, inputClass } from "../components/ui";
 
@@ -38,7 +39,9 @@ function Meter({ label, value, max, tone, moneda }) {
 }
 
 export function Dashboard({ onNavigate }) {
+  const { profile } = useAuth();
   const { vehiculos, gestiones, movimientos_caja, clientes, pending } = useData();
+  const veCaja = profile?.rol === "admin" || profile?.local;
   const [moneda, setMoneda] = useState("ARS");
   const [alerts, setAlerts] = useState([]);
   const [desde, setDesde] = useState("");
@@ -49,8 +52,8 @@ export function Dashboard({ onNavigate }) {
   }, [vehiculos, gestiones, clientes]);
 
   const stock = vehiculos.filter((vehicle) => vehicle.estado !== "Vendido");
-  const consigna = stock.filter((vehicle) => vehicle.modalidad === "Consigna Digital").length;
-  const wash = stock.filter((vehicle) => vehicle.modalidad === "Wash & Sell").length;
+  const propio = stock.filter((vehicle) => modalidadCanonica(vehicle.modalidad) === "Stock Propio").length;
+  const consigna = stock.filter((vehicle) => modalidadCanonica(vehicle.modalidad) === "Consigna").length;
   const activas = gestiones.filter((gestion) => !["Finalizado", "Listo"].includes(gestion.etapa));
   const detailing = activas.filter((gestion) => gestion.sector === "Detailing").length;
   const gestoria = activas.filter((gestion) => gestion.sector === "Gestoria").length;
@@ -85,11 +88,11 @@ export function Dashboard({ onNavigate }) {
   }
 
   const cards = [
-    ["Caja ARS", money(balanceOf(movimientos_caja, "ARS"), "ARS")],
-    ["Caja USD", money(balanceOf(movimientos_caja, "USD"), "USD")],
-    ["Vehículos en stock", `${stock.length}`, `${consigna} consigna · ${wash} wash & sell`],
+    veCaja && ["Caja ARS", money(balanceOf(movimientos_caja, "ARS"), "ARS")],
+    veCaja && ["Caja USD", money(balanceOf(movimientos_caja, "USD"), "USD")],
+    ["Vehículos en stock", `${stock.length}`, `${propio} stock propio · ${consigna} consigna`],
     ["Gestiones activas", `${activas.length}`, `${detailing} detailing · ${gestoria} gestoría`],
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -111,7 +114,7 @@ export function Dashboard({ onNavigate }) {
         <PrimaryButton onClick={() => go("caja", "caja")}>Cargar movimiento</PrimaryButton>
       </div>
 
-      <section className="bg-[#141414] border border-white/10 rounded-2xl p-4">
+      {veCaja && <section className="bg-[#141414] border border-white/10 rounded-2xl p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="min-w-0 font-display text-lg uppercase leading-tight tracking-wide sm:text-xl">Ingresos y egresos por rubro</h2>
           <div className="flex gap-2">
@@ -146,7 +149,7 @@ export function Dashboard({ onNavigate }) {
             </ResponsiveContainer>
           </div>
         )}
-      </section>
+      </section>}
 
       <section className="bg-[#141414] border border-white/10 rounded-2xl p-4">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">

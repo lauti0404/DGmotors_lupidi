@@ -1,4 +1,4 @@
-import { CHECKLIST_GESTION, CHECKLIST_VEHICULO } from "./constants";
+import { CHECKLIST_VEHICULO, modalidadCanonica, tramitesDe } from "./constants";
 import { dniCuit, phoneLocal, plateOnly } from "./format";
 import { supabase } from "./supabase";
 
@@ -207,9 +207,15 @@ export function prepare(table, row) {
     else if (typeof value === "string") value = value.trim();
     payload[key] = value;
   }
-  if (table === "vehiculos") payload.checklist = { ...CHECKLIST_VEHICULO, ...(row.checklist || {}) };
+  if (table === "vehiculos") {
+    payload.checklist = { ...CHECKLIST_VEHICULO, ...(row.checklist || {}) };
+    payload.modalidad = modalidadCanonica(row.modalidad);
+  }
   if (table === "gestiones") {
-    payload.checklist = { ...CHECKLIST_GESTION, ...(row.checklist || {}) };
+    const previos = row.checklist || {};
+    const resto = { ...previos };
+    for (const key of ["form_08", "cedula", "titulo", "policial", "libre_deuda", "ceta", "tramites"]) delete resto[key];
+    payload.checklist = { ...resto, tramites: tramitesDe(previos) };
     payload.pagado = Boolean(row.pagado);
   }
   if (COLUMNS[table].includes("actualizado_en") && !payload.actualizado_en) payload.actualizado_en = new Date().toISOString();

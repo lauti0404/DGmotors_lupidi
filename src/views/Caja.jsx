@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
-import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE } from "../lib/constants";
+import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE, categoriaVisible, categoriasElegibles, modalidadCanonica } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
 import { amountOnly, balanceOf, formatDate, money, phoneError, phoneLocal, ticketOnly, todayISO, vehicleLabel } from "../lib/format";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
@@ -13,7 +13,8 @@ import { VehiculoEditor } from "../components/VehiculoEditor";
 import { CutLabel, Empty, Field, GhostButton, Modal, Pill, PrimaryButton, inputClass } from "../components/ui";
 
 export function Caja() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const veCaja = profile?.rol === "admin" || profile?.local;
   const { movimientos_caja, vehiculos, gestiones, clientes, caja_comprobantes = [], perfiles = [], save, remove } = useData();
   const [tab, setTab] = useState("movimientos");
   const [rubro, setRubro] = useState("todos");
@@ -122,8 +123,14 @@ export function Caja() {
 
   const vendidos = vehiculos.filter((vehicle) => vehicle.estado === "Vendido");
 
+  function autor(row) {
+    const perfil = perfiles.find((item) => item.id === row.registrado_por);
+    return perfil?.nombre || (profile?.id && profile.id === row.registrado_por ? profile.nombre : "") || perfil?.email || "Sin nombre";
+  }
+
   return (
     <div className="space-y-4">
+      {veCaja && (
       <div className="grid sm:grid-cols-2 gap-3">
         {["ARS", "USD"].map((currency) => (
           <article key={currency} className="bg-[#141414] border border-white/10 rounded-2xl p-4">
@@ -132,7 +139,10 @@ export function Caja() {
           </article>
         ))}
       </div>
+      )}
 
+      {veCaja ? (
+      <>
       <div className="flex gap-2">
         <Pill active={tab === "movimientos"} onClick={() => setTab("movimientos")}>Movimientos</Pill>
         <Pill active={tab === "rentabilidad"} onClick={() => setTab("rentabilidad")}>Rentabilidad por unidad</Pill>
@@ -157,7 +167,7 @@ export function Caja() {
                   const resultado = (Number(vehicle.precio_venta) || 0) - costo;
                   return (
                     <tr key={vehicle.id} className="border-t border-white/5">
-                      <td className="px-3 py-3">{vehicleLabel(vehicle)}<div className="text-xs text-[#A1A1AA]">{vehicle.patente} · {vehicle.modalidad}</div></td>
+                      <td className="px-3 py-3">{vehicleLabel(vehicle)}<div className="text-xs text-[#A1A1AA]">{vehicle.patente} · {modalidadCanonica(vehicle.modalidad)}</div></td>
                       <td className="px-3 py-3">{money(vehicle.precio_compra, vehicle.moneda)}</td>
                       <td className="px-3 py-3">{money(vehicle.gastos_preparacion, vehicle.moneda)}</td>
                       <td className="px-3 py-3">{money(vehicle.precio_venta, vehicle.moneda)}</td>
@@ -235,8 +245,8 @@ export function Caja() {
                   {filtered.map((row) => (
                     <tr key={row.id} className="border-t border-white/5">
                       <td className="px-3 py-3 whitespace-nowrap">{formatDate(row.fecha)}</td>
-                      <td className="px-3 py-3">{row.concepto}<div className="text-xs text-[#A1A1AA]">{row.metodo_pago}</div></td>
-                      <td className="px-3 py-3">{row.categoria}</td>
+                      <td className="px-3 py-3">{row.concepto}<div className="text-xs text-[#A1A1AA]">{row.metodo_pago}</div><div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[#A1A1AA]">Cargado por: {autor(row)}</div></td>
+                      <td className="px-3 py-3">{categoriaVisible(row.categoria)}</td>
                       <td className="px-3 py-3">{row.tipo}</td>
                       <td className={`px-3 py-3 whitespace-nowrap ${row.tipo === "Ingreso" ? "text-emerald-300" : "text-red-300"}`}>{money(row.monto, row.moneda)}</td>
                       <td className="px-3 py-3">
@@ -258,6 +268,13 @@ export function Caja() {
           )}
         </>
       )}
+      </>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <PrimaryButton onClick={() => openMove(blankMovimiento(user?.id, { tipo: "Ingreso" }))}>+ Registrar Ingreso</PrimaryButton>
+          <PrimaryButton onClick={() => openMove(blankMovimiento(user?.id, { tipo: "Egreso", categoria: "Gastos Varios de Oficina" }))}>+ Registrar Egreso</PrimaryButton>
+        </div>
+      )}
 
       {archivo && <ArchivoViewer src={archivo.src} name={archivo.name} onClose={() => setArchivo(null)} />}
       {editor && (
@@ -271,7 +288,7 @@ export function Caja() {
             </Field>
             <Field label="Categoría">
               <select className={inputClass} value={editor.categoria} onChange={(event) => setEditor({ ...editor, categoria: event.target.value })}>
-                {RUBROS.map((group) => (
+                {categoriasElegibles().map((group) => (
                   <optgroup key={group.id} label={group.label}>
                     {group.categories.map((item) => <option key={item}>{item}</option>)}
                   </optgroup>
@@ -325,6 +342,7 @@ export function Caja() {
             <div className="sm:col-span-2 grid gap-4 lg:grid-cols-2">
               <ClienteFields
                 clientes={clientes}
+                vehiculos={vehiculos}
                 clienteId={editor.cliente_id}
                 nombre={editor.cliente_id ? (clientes.find((item) => item.id === editor.cliente_id)?.nombre || "") : (editor.cliente_manual || "")}
                 telefono={editor.cliente_id ? (clientes.find((item) => item.id === editor.cliente_id)?.telefono || "") : (editor.cliente_telefono || "")}

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
-import { ESTADOS_VEHICULO, MODALIDADES } from "../lib/constants";
+import { ESTADOS_VEHICULO, MODALIDADES, modalidadCanonica } from "../lib/constants";
 import { amountOnly, kmOnly, phoneError, phoneLocal, plateError, plateOnly, yearError, yearOnly } from "../lib/format";
 import { blankCliente } from "../lib/records";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
 import { loadImage, removeImage } from "../lib/images";
 import { ClienteEditor } from "./ClienteEditor";
+import { ClienteSearchSelect } from "./ClienteSearchSelect";
 import { ImageCropper } from "./ImageCropper";
 import { SelectorArchivo } from "./SelectorArchivo";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
@@ -26,7 +27,6 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
   const [error, setError] = useState("");
   const exists = vehiculos.some((vehicle) => vehicle.id === editor.id);
   const ownerLocked = Boolean(editor.cliente_duenio_id);
-  const modalidades = MODALIDADES.includes(editor.modalidad) ? MODALIDADES : [editor.modalidad, ...MODALIDADES];
 
   function chooseOwner(id) {
     const cliente = clientes.find((item) => item.id === id);
@@ -101,8 +101,8 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             <input className={inputClass} placeholder="Opcional" value={editor.transmision || ""} onChange={(event) => setEditor({ ...editor, transmision: event.target.value })} />
           </Field>
           <Field label="Modalidad">
-            <select className={inputClass} value={editor.modalidad} onChange={(event) => setEditor({ ...editor, modalidad: event.target.value })}>
-              {modalidades.map((item) => <option key={item}>{item}</option>)}
+            <select className={inputClass} value={modalidadCanonica(editor.modalidad)} onChange={(event) => setEditor({ ...editor, modalidad: event.target.value })}>
+              {MODALIDADES.map((item) => <option key={item}>{item}</option>)}
             </select>
           </Field>
           <Field label="Estado">
@@ -124,12 +124,12 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="Opcional" value={optionalNumber(editor.gastos_preparacion)} onChange={(event) => setEditor({ ...editor, gastos_preparacion: amountOnly(event.target.value) })} />
           </Field>
           <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
-            <Field label="Dueño">
-              <select className={inputClass} value={editor.cliente_duenio_id || ""} onChange={(event) => chooseOwner(event.target.value)}>
-                <option value="">Sin ficha, escribir a mano</option>
-                {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>)}
-              </select>
-            </Field>
+            <div>
+              <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Dueño:</span>
+              <div className="mt-1.5">
+                <ClienteSearchSelect clientes={clientes} vehiculos={vehiculos} value={editor.cliente_duenio_id || ""} onChange={chooseOwner} />
+              </div>
+            </div>
             <div className="flex items-end">
               <GhostButton onClick={() => setNewCliente("duenio")}>Agregar nueva ficha de cliente</GhostButton>
             </div>
@@ -139,12 +139,18 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
             <Field label="Teléfono del dueño" hint="Ej: 1150649934. Sin +54.">
               <input className={inputClass} inputMode="numeric" maxLength={10} placeholder="1150649934" value={editor.duenio_telefono || ""} disabled={ownerLocked} onChange={(event) => setEditor({ ...editor, duenio_telefono: phoneLocal(event.target.value) })} />
             </Field>
-            <Field label="Comprador">
-              <select className={inputClass} value={editor.cliente_comprador_id || ""} onChange={(event) => setEditor({ ...editor, cliente_comprador_id: event.target.value || null })}>
-                <option value="">Sin comprador</option>
-                {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>)}
-              </select>
-            </Field>
+            <div>
+              <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Comprador:</span>
+              <div className="mt-1.5">
+                <ClienteSearchSelect
+                  clientes={clientes}
+                  vehiculos={vehiculos}
+                  value={editor.cliente_comprador_id || ""}
+                  emptyLabel="Sin comprador"
+                  onChange={(id) => setEditor({ ...editor, cliente_comprador_id: id || null })}
+                />
+              </div>
+            </div>
             <div className="flex items-end">
               <GhostButton onClick={() => setNewCliente("comprador")}>Agregar nueva ficha de cliente</GhostButton>
             </div>

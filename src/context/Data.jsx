@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { membresiaVencida, sinMembresia } from "../lib/catalogo";
+import { modalidadCanonica } from "../lib/constants";
 import { applyLocal, deleteDemoClients, discardDemoResidue, enqueue, flushQueue, loadProfile, loadQueue, loadTable, mergeRows, prepare, pullAll, pushOp, saveQueue, saveTable, withoutResidue } from "../lib/offline";
 import { supabaseConfigured } from "../lib/supabase";
 
@@ -123,6 +124,14 @@ export function DataProvider({ children, userId }) {
       save("clientes", sinMembresia(cliente));
     }
   }, [tables.clientes, save]);
+
+  useEffect(() => {
+    for (const vehicle of tables.vehiculos || []) {
+      const modalidad = modalidadCanonica(vehicle.modalidad);
+      if (modalidad === vehicle.modalidad) continue;
+      save("vehiculos", { ...vehicle, modalidad });
+    }
+  }, [tables.vehiculos, save]);
 
   const value = useMemo(() => ({
     ...tables,

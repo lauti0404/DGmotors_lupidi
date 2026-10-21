@@ -23,7 +23,7 @@ const NAV = [
 
 const COPY = {
   dashboard: ["Dashboard", "Caja, stock y gestiones del día."],
-  stock: ["Stock de vehículos", "Consigna y Wash & Sell."],
+  stock: ["Stock de vehículos", "Stock propio y consigna."],
   gestoria: ["Gestoría", "Trámites, aunque el auto no esté en stock."],
   detailing: ["Detailing", "Trabajos, packs y membresías."],
   clientes: ["Clientes", "Fichas, historial y WhatsApp."],

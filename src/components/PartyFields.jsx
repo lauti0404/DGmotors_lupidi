@@ -1,25 +1,29 @@
 import { phoneLocal, vehicleLabel } from "../lib/format";
+import { ClienteSearchSelect } from "./ClienteSearchSelect";
 import { Field, GhostButton, inputClass } from "./ui";
 
-export function ClienteFields({ clientes, clienteId, nombre, telefono, onChange, onCreate }) {
+export function ClienteFields({ clientes, vehiculos = [], clienteId, nombre, telefono, onChange, onCreate }) {
   const locked = Boolean(clienteId);
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <Field label="Cliente">
-            <select className={inputClass} value={clienteId || ""} onChange={(event) => {
-              const cliente = clientes.find((item) => item.id === event.target.value);
-              onChange({
-                clienteId: event.target.value || null,
-                nombre: cliente?.nombre || "",
-                telefono: cliente?.telefono || "",
-              });
-            }}>
-              <option value="">Sin ficha, escribir a mano</option>
-              {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>)}
-            </select>
-          </Field>
+          <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Cliente:</span>
+          <div className="mt-1.5">
+            <ClienteSearchSelect
+              clientes={clientes}
+              vehiculos={vehiculos}
+              value={clienteId || ""}
+              onChange={(id) => {
+                const cliente = clientes.find((item) => item.id === id);
+                onChange({
+                  clienteId: id || null,
+                  nombre: cliente?.nombre || "",
+                  telefono: cliente?.telefono || "",
+                });
+              }}
+            />
+          </div>
         </div>
         <GhostButton className="w-36 shrink-0 whitespace-normal px-3 py-2 text-left text-xs leading-snug" onClick={onCreate}>Agregar nueva ficha de cliente</GhostButton>
       </div>

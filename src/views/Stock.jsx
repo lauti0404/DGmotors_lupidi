@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClienteEditor } from "../components/ClienteEditor";
+import { ClienteSearchSelect } from "../components/ClienteSearchSelect";
+import { ConfirmacionCaja } from "../components/ConfirmacionCaja";
 import { VehiculoEditor } from "../components/VehiculoEditor";
 import { Empty, Field, GhostButton, Modal, Pill, Plate, PrimaryButton, StatusBadge, inputClass } from "../components/ui";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
-import { ESTADOS_VEHICULO, MODALIDADES } from "../lib/constants";
-import { amountOnly, formatKm, money, phoneError, phoneLocal, vehicleLabel } from "../lib/format";
+import { ESTADOS_VEHICULO, MODALIDADES, modalidadCanonica } from "../lib/constants";
+import { formatKm, money, phoneError, phoneLocal, vehicleLabel } from "../lib/format";
 import { vehiclePhoto } from "../lib/images";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
 
@@ -19,13 +21,14 @@ function consumeQuick(kind) {
 
 export function Stock() {
   const { user } = useAuth();
-  const { vehiculos, clientes, save } = useData();
+  const { vehiculos, clientes, movimientos_caja = [], save } = useData();
   const [estado, setEstado] = useState("Todos");
   const [modalidad, setModalidad] = useState("Todas");
   const [query, setQuery] = useState("");
   const [editor, setEditor] = useState(null);
   const [detail, setDetail] = useState(null);
   const [sale, setSale] = useState(null);
+  const [cajaVenta, setCajaVenta] = useState(false);
   const [saleError, setSaleError] = useState("");
   const [newCliente, setNewCliente] = useState(false);
 
@@ -37,20 +40,14 @@ export function Stock() {
     const text = `${vehicle.marca} ${vehicle.modelo} ${vehicle.patente}`.toLowerCase();
     if (query && !text.includes(query.toLowerCase())) return false;
     if (estado !== "Todos" && vehicle.estado !== estado) return false;
-    if (modalidad !== "Todas" && vehicle.modalidad !== modalidad) return false;
+    if (modalidad !== "Todas" && modalidadCanonica(vehicle.modalidad) !== modalidad) return false;
     return true;
   }), [vehiculos, query, estado, modalidad]);
 
-  function confirmSale(event) {
-    event.preventDefault();
+  function vender(impacto) {
     const buyer = clientes.find((item) => item.id === sale.cliente_comprador_id);
     const buyerName = buyer?.nombre || sale.comprador_nombre || "";
     const telefono = phoneLocal(sale.comprador_telefono);
-    const problem = !buyer && phoneError(telefono);
-    if (problem) {
-      setSaleError(problem);
-      return;
-    }
     const phone = !buyer && telefono ? `Tel: ${telefono}` : "";
     const extra = [buyerName && !buyer ? `Comprador: ${buyerName}` : "", phone, sale.nota].filter(Boolean).join(". ");
     save("vehiculos", {
@@ -59,20 +56,46 @@ export function Stock() {
       cliente_comprador_id: sale.cliente_comprador_id || null,
       notas: [sale.vehicle.notas, extra].filter(Boolean).join("\n"),
     });
-    if (sale.registrar && Number(sale.monto) > 0) {
-      const concepto = [`Venta ${vehicleLabel(sale.vehicle)}`, buyerName ? `Comprador: ${buyerName}` : "", phone, sale.nota].filter(Boolean).join(". ");
+    const base = {
+      vehiculo_id: sale.vehicle.id,
+      cliente_id: sale.cliente_comprador_id || null,
+    };
+    if (impacto?.ingreso && Number(impacto.ingreso.monto) > 0) {
       save("movimientos_caja", blankMovimiento(user?.id, {
+        ...base,
         tipo: "Ingreso",
-        categoria: "Autos - Venta / Comisión",
-        concepto,
-        moneda: sale.moneda,
-        monto: amountOnly(sale.monto) || 0,
-        metodo_pago: sale.metodo,
-        vehiculo_id: sale.vehicle.id,
-        cliente_id: sale.cliente_comprador_id || null,
+        categoria: impacto.ingreso.categoria,
+        concepto: impacto.ingreso.concepto,
+        moneda: impacto.ingreso.moneda,
+        monto: impacto.ingreso.monto,
+        metodo_pago: impacto.ingreso.metodo,
       }));
     }
+    if (impacto?.egreso && Number(impacto.egreso.monto) > 0) {
+      save("movimientos_caja", blankMovimiento(user?.id, {
+        ...base,
+        tipo: "Egreso",
+        categoria: impacto.egreso.categoria,
+        concepto: impacto.egreso.concepto,
+        moneda: impacto.egreso.moneda,
+        monto: impacto.egreso.monto,
+        metodo_pago: impacto.egreso.metodo,
+      }));
+    }
+    setCajaVenta(false);
     setSale(null);
+  }
+
+  function continuarVenta(event) {
+    event.preventDefault();
+    const buyer = clientes.find((item) => item.id === sale.cliente_comprador_id);
+    const telefono = phoneLocal(sale.comprador_telefono);
+    const problem = !buyer && phoneError(telefono);
+    if (problem) {
+      setSaleError(problem);
+      return;
+    }
+    setCajaVenta(true);
   }
 
   const detailImage = detail ? vehiclePhoto(detail) : "";
@@ -108,7 +131,7 @@ export function Stock() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-[#A1A1AA]">
                     <Plate>{vehicle.patente}</Plate>
-                    <span>{vehicle.modalidad}</span>
+                    <span>{modalidadCanonica(vehicle.modalidad)}</span>
                   </div>
                   <div className="font-display text-2xl">{money(vehicle.precio_venta, vehicle.moneda)}</div>
                   <div className="flex flex-wrap gap-2">
@@ -146,7 +169,7 @@ export function Stock() {
                 ["Kilometraje", formatKm(detail.kilometraje)],
                 ["Motor", detail.motor || "Sin cargar"],
                 ["Transmisión", detail.transmision || "Sin cargar"],
-                ["Modalidad", detail.modalidad],
+                ["Modalidad", modalidadCanonica(detail.modalidad)],
                 ["Estado", detail.estado],
                 ["Compra", detail.precio_compra ? money(detail.precio_compra, detail.moneda) : "Sin cargar"],
                 ["Venta", money(detail.precio_venta, detail.moneda)],
@@ -167,21 +190,22 @@ export function Stock() {
       )}
 
       {sale && (
-        <Modal title="Marcar como vendido" subtitle={vehicleLabel(sale.vehicle)} onClose={() => setSale(null)}>
-          <form onSubmit={confirmSale} className="p-5 space-y-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={sale.registrar} onChange={(event) => setSale({ ...sale, registrar: event.target.checked })} />
-              Registrar el ingreso en caja
-            </label>
-            <Field label="Comprador">
-              <select className={inputClass} value={sale.cliente_comprador_id || ""} onChange={(event) => {
-                const cliente = clientes.find((item) => item.id === event.target.value);
-                setSale({ ...sale, cliente_comprador_id: event.target.value, comprador_nombre: cliente?.nombre || "" });
-              }}>
-                <option value="">Sin ficha, escribir a mano</option>
-                {clientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>)}
-              </select>
-            </Field>
+        <Modal title="Marcar como vendido" subtitle={vehicleLabel(sale.vehicle)} onClose={() => { setSale(null); setCajaVenta(false); }}>
+          <form onSubmit={continuarVenta} className="p-5 space-y-4">
+            <div>
+              <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Comprador:</span>
+              <div className="mt-1.5">
+                <ClienteSearchSelect
+                  clientes={clientes}
+                  vehiculos={vehiculos}
+                  value={sale.cliente_comprador_id || ""}
+                  onChange={(id) => {
+                    const cliente = clientes.find((item) => item.id === id);
+                    setSale({ ...sale, cliente_comprador_id: id, comprador_nombre: cliente?.nombre || "", comprador_telefono: cliente?.telefono || "" });
+                  }}
+                />
+              </div>
+            </div>
             <GhostButton onClick={() => setNewCliente(true)}>Agregar nueva ficha de cliente</GhostButton>
             <Field label="Nombre del comprador" hint={buyerLocked ? "Sale de la ficha elegida." : "Solo si todavía no tiene ficha."}>
               <input className={inputClass} value={sale.comprador_nombre || ""} disabled={buyerLocked} onChange={(event) => setSale({ ...sale, comprador_nombre: event.target.value })} />
@@ -192,24 +216,39 @@ export function Stock() {
             <Field label="Nota" hint="Cualquier aclaración de la operación.">
               <textarea className={`${inputClass} min-h-20`} value={sale.nota || ""} onChange={(event) => setSale({ ...sale, nota: event.target.value })} />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Monto"><input className={inputClass} inputMode="numeric" maxLength={10} value={amountOnly(sale.monto) || 0} onChange={(event) => setSale({ ...sale, monto: amountOnly(event.target.value) || 0 })} /></Field>
-              <Field label="Moneda">
-                <select className={inputClass} value={sale.moneda} onChange={(event) => setSale({ ...sale, moneda: event.target.value })}>
-                  <option>ARS</option><option>USD</option>
-                </select>
-              </Field>
-              <Field label="Método">
-                <select className={inputClass} value={sale.metodo} onChange={(event) => setSale({ ...sale, metodo: event.target.value })}>
-                  {["Efectivo", "Transferencia", "USD Billete", "Cripto/Otro"].map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </Field>
-            </div>
-            <p className="text-xs text-[#A1A1AA]">El ingreso queda en Autos - Venta / Comisión, con el comprador y la nota en la descripción.</p>
+            <p className="text-xs text-[#A1A1AA]">El siguiente paso muestra el precio de venta, la compra y los gastos, y deja elegir si entran en caja.</p>
             {saleError && <p className="text-sm text-red-300">{saleError}</p>}
-            <PrimaryButton type="submit">Confirmar venta</PrimaryButton>
+            <PrimaryButton type="submit">Continuar a caja</PrimaryButton>
           </form>
         </Modal>
+      )}
+
+      {sale && cajaVenta && (
+        <ConfirmacionCaja
+          titulo="Venta de vehículo"
+          subtitulo={vehicleLabel(sale.vehicle)}
+          aviso={movimientos_caja.some((row) => row.vehiculo_id === sale.vehicle.id) ? "Esta unidad ya tiene movimientos en caja. Confirmar agrega otros." : ""}
+          textoOmitir="Guardar la venta sin impactar en caja"
+          ingreso={{
+            activo: Number(sale.vehicle.precio_venta) > 0,
+            monto: Number(sale.vehicle.precio_venta) || 0,
+            concepto: `Venta ${vehicleLabel(sale.vehicle)}`,
+            categoria: "Venta de Vehículo",
+            moneda: sale.vehicle.moneda || "USD",
+            metodo: sale.vehicle.moneda === "USD" ? "USD Billete" : "Transferencia",
+          }}
+          egreso={{
+            activo: (Number(sale.vehicle.precio_compra) || 0) + (Number(sale.vehicle.gastos_preparacion) || 0) > 0,
+            monto: (Number(sale.vehicle.precio_compra) || 0) + (Number(sale.vehicle.gastos_preparacion) || 0),
+            concepto: `Compra y preparación ${vehicleLabel(sale.vehicle)}`,
+            categoria: Number(sale.vehicle.precio_compra) > 0 ? "Compra / Toma de Vehículo" : "Gastos de Preparación de Unidad",
+            moneda: sale.vehicle.moneda || "USD",
+            metodo: sale.vehicle.moneda === "USD" ? "USD Billete" : "Transferencia",
+          }}
+          onClose={() => setCajaVenta(false)}
+          onOmitir={() => vender(null)}
+          onConfirm={(impacto) => vender(impacto)}
+        />
       )}
 
       {newCliente && sale && (

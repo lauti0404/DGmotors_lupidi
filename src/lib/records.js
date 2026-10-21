@@ -1,4 +1,4 @@
-import { CHECKLIST_GESTION, CHECKLIST_VEHICULO } from "./constants";
+import { CHECKLIST_VEHICULO, checklistGestionInicial } from "./constants";
 import { todayISO } from "./format";
 
 function now() {
@@ -38,7 +38,7 @@ export function blankVehiculo(userId) {
     kilometraje: 0,
     motor: "",
     transmision: "",
-    modalidad: "Consigna Digital",
+    modalidad: "Consigna",
     estado: "Disponible",
     moneda: "USD",
     precio_compra: 0,
@@ -72,7 +72,7 @@ export function blankGestion(userId, sector = "Gestoria") {
     costo_interno: 0,
     precio_cobrado: 0,
     pagado: false,
-    checklist: { ...CHECKLIST_GESTION },
+    checklist: checklistGestionInicial(),
     notas: "",
     fecha_ingreso: todayISO(),
     creado_por: userId || null,

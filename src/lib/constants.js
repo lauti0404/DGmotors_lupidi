@@ -2,7 +2,12 @@ export const CATEGORIAS_CLIENTE = ["Comprador", "Vendedor Consigna", "Cliente De
 export const MEMBRESIAS = ["Ninguna", "Stone", "Bronze", "Silver", "Gold", "Diamond"];
 export const LAVADOS_SUGERIDOS = { Ninguna: 0, Stone: 2, Bronze: 3, Silver: 6, Gold: 9, Diamond: 12 };
 
-export const MODALIDADES = ["Consigna Digital", "Wash & Sell"];
+export const MODALIDADES = ["Stock Propio", "Consigna"];
+
+export function modalidadCanonica(value) {
+  if (value === "Consigna" || value === "Consigna Digital") return "Consigna";
+  return "Stock Propio";
+}
 export const ESTADOS_VEHICULO = ["Disponible", "Reservado", "Vendido"];
 export const MONEDAS = ["ARS", "USD"];
 export const METODOS_PAGO = ["Efectivo", "Transferencia", "USD Billete", "Cripto/Otro"];
@@ -54,6 +59,7 @@ export const RUBROS = [
     emoji: "🚗",
     categories: [
       "Venta de Vehículo",
+      "Comisión Consigna",
       "Comisión Consigna Digital",
       "Servicio Wash & Sell",
       "Compra / Toma de Vehículo",
@@ -93,25 +99,72 @@ export const RUBROS = [
   },
 ];
 
+export const CATEGORIAS_LEGACY = new Set(["Servicio Wash & Sell", "Comisión Consigna Digital"]);
+
+export function categoriaVisible(value) {
+  if (value === "Servicio Wash & Sell") return "Stock Propio";
+  if (value === "Comisión Consigna Digital") return "Comisión Consigna";
+  return value;
+}
+
+export function categoriasElegibles() {
+  return RUBROS.map((group) => ({
+    ...group,
+    categories: group.categories.filter((item) => !CATEGORIAS_LEGACY.has(item)),
+  }));
+}
+
 export function rubroDe(categoria) {
   return RUBROS.find((rubro) => rubro.categories.includes(categoria)) || null;
 }
 
 export const CHECKLIST_VEHICULO = { detailing: false, fotos: false, publicado: false };
-export const CHECKLIST_GESTION = {
-  form_08: false,
-  cedula: false,
-  titulo: false,
-  policial: false,
-  libre_deuda: false,
-  ceta: false,
-};
 
-export const CHECKLIST_GESTION_LABELS = [
-  ["form_08", "08"],
-  ["cedula", "Cédula"],
-  ["titulo", "Título"],
-  ["policial", "Policial"],
-  ["libre_deuda", "Libre deuda"],
-  ["ceta", "CETA"],
+export const TRAMITES_GESTORIA = [
+  { key: "policial", label: "Policial", requerido: true },
+  { key: "transferencia", label: "Transferencia" },
+  { key: "informe_dominio", label: "Informe de dominio e histórico" },
+  { key: "informe_suats", label: "Informe SUATS" },
+  { key: "reduccion_infracciones", label: "Reducción de infracciones" },
+  { key: "cambio_motor", label: "Cambio de motor" },
+  { key: "cambio_radicacion", label: "Cambio de radicación" },
+  { key: "patentamiento", label: "Patentamiento" },
+  { key: "escribania", label: "Escribanía" },
 ];
+
+export function tramitesIniciales() {
+  return Object.fromEntries(TRAMITES_GESTORIA.map((item) => [item.key, { activo: Boolean(item.requerido), obtenido: false }]));
+}
+
+export function checklistGestionInicial() {
+  return { tramites: tramitesIniciales() };
+}
+
+export function tramitesDe(checklist) {
+  const base = tramitesIniciales();
+  const stored = checklist?.tramites;
+  if (stored && typeof stored === "object") {
+    for (const item of TRAMITES_GESTORIA) {
+      const row = stored[item.key] || {};
+      const activo = item.requerido ? true : Boolean(row.activo);
+      const obtenido = Boolean(row.obtenido);
+      base[item.key] = { activo: activo || obtenido, obtenido: obtenido && (activo || obtenido) };
+    }
+    return base;
+  }
+  if (checklist && checklist.policial === true) base.policial = { activo: true, obtenido: true };
+  return base;
+}
+
+export function resumenTramites(checklist) {
+  const tramites = tramitesDe(checklist);
+  const obtenidos = [];
+  const pendientes = [];
+  for (const item of TRAMITES_GESTORIA) {
+    const row = tramites[item.key];
+    if (!row?.activo) continue;
+    if (row.obtenido) obtenidos.push(item);
+    else pendientes.push(item);
+  }
+  return { tramites, obtenidos, pendientes };
+}
