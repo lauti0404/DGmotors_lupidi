@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { membresiaVencida, sinMembresia } from "../lib/catalogo";
 import { applyLocal, deleteDemoClients, discardDemoResidue, enqueue, flushQueue, loadProfile, loadQueue, loadTable, mergeRows, prepare, pullAll, pushOp, saveQueue, saveTable, withoutResidue } from "../lib/offline";
 import { supabaseConfigured } from "../lib/supabase";
 
 const DataContext = createContext(null);
-const TABLES = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "catalogo_servicios", "cliente_imagenes", "perfiles"];
+const TABLES = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "membresias", "detailing_packs", "detailing_pack_items", "detailing_extras", "cliente_imagenes", "perfiles"];
 
 function initialTables() {
   discardDemoResidue();
@@ -115,6 +116,13 @@ export function DataProvider({ children, userId }) {
     setTables((current) => ({ ...current, [table]: next }));
     void replicate(table, "DELETE", { id });
   }, [replicate]);
+
+  useEffect(() => {
+    for (const cliente of tables.clientes || []) {
+      if (!membresiaVencida(cliente)) continue;
+      save("clientes", sinMembresia(cliente));
+    }
+  }, [tables.clientes, save]);
 
   const value = useMemo(() => ({
     ...tables,

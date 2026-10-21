@@ -8,7 +8,7 @@ import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { ArchivoViewer } from "../components/ArchivoViewer";
 import { CHECKLIST_GESTION_LABELS, ETAPAS_DETAILING, ETAPAS_GESTORIA, TIPOS_DOCUMENTO } from "../lib/constants";
-import { catalogoVisible, incluyeDe } from "../lib/catalogo";
+import { EXTRAS_INICIAL, MEMBRESIAS_INICIAL, PACKS_INICIAL, filasVisibles, itemsDelPack, sinMembresia } from "../lib/catalogo";
 import { downloadData } from "../lib/files";
 import { formatDate, money, todayISO, vehicleLabel, waLink } from "../lib/format";
 import { blankCliente, blankGestion, blankMovimiento, blankVehiculo } from "../lib/records";
@@ -31,11 +31,14 @@ function pasosOf(gestion) {
 
 export function Gestiones({ sector = "Gestoria" }) {
   const { user } = useAuth();
-  const { gestiones, clientes, vehiculos, gestion_documentos = [], perfiles = [], catalogo_servicios = [], save, remove } = useData();
+  const { gestiones, clientes, vehiculos, gestion_documentos = [], perfiles = [], membresias = [], detailing_packs = [], detailing_pack_items = [], detailing_extras = [], save, remove } = useData();
   const [editor, setEditor] = useState(null);
   const [docEditor, setDocEditor] = useState(null);
   const [archivo, setArchivo] = useState(null);
-  const servicios = catalogoVisible(catalogo_servicios);
+  const packs = filasVisibles(detailing_packs, PACKS_INICIAL);
+  const extras = filasVisibles(detailing_extras, EXTRAS_INICIAL);
+  const planes = filasVisibles(membresias, MEMBRESIAS_INICIAL);
+  const packsSemilla = !detailing_packs.length;
   const [cobro, setCobro] = useState(null);
   const [newCliente, setNewCliente] = useState(false);
   const [newVehiculo, setNewVehiculo] = useState(false);
@@ -129,6 +132,30 @@ export function Gestiones({ sector = "Gestoria" }) {
       ...cliente,
       lavados_usados: Number(cliente.lavados_usados || 0) + 1,
       ultimo_servicio: todayISO(),
+    });
+  }
+
+  function quitarMembresia(cliente) {
+    if (!window.confirm(`¿Quitar la membresía de ${cliente.nombre}? Se borra de su ficha.`)) return;
+    save("clientes", sinMembresia(cliente));
+  }
+
+  function elegirServicio(packId, extraIds) {
+    const pack = packs.find((item) => item.id === packId);
+    const chosen = extras.filter((item) => extraIds.includes(item.id));
+    const moneda = pack?.moneda || chosen[0]?.moneda || editor.moneda || "ARS";
+    const precio = (pack && (pack.moneda || "ARS") === moneda ? Number(pack.precio) || 0 : 0)
+      + chosen.filter((item) => (item.moneda || "ARS") === moneda).reduce((total, item) => total + (Number(item.precio) || 0), 0);
+    const notas = pack ? itemsDelPack(pack.id, detailing_pack_items, packsSemilla).map((item) => `• ${item.descripcion_item}`).join("\n") : "";
+    const titulo = [pack?.nombre, ...chosen.map((item) => item.nombre)].filter(Boolean).join(" + ");
+    setEditor({
+      ...editor,
+      pack_id: packId,
+      extra_ids: extraIds,
+      titulo: titulo || editor.titulo,
+      precio_cobrado: precio,
+      moneda,
+      notas: !editor.notas?.trim() || editor.pack_id !== packId ? notas : editor.notas,
     });
   }
 
@@ -243,7 +270,8 @@ export function Gestiones({ sector = "Gestoria" }) {
           {socios.length === 0 ? <div className="p-5"><Empty>Todavía no hay socios. Se cargan desde la ficha del cliente.</Empty></div> : (
             <div className="flex flex-col gap-px bg-white/10">
               {socios.map((cliente) => {
-                const total = Number(cliente.lavados_totales) || 0;
+                const plan = planes.find((item) => item.nombre === cliente.membresia);
+                const total = Number(cliente.lavados_totales) || Number(plan?.lavados_totales) || 0;
                 const used = Number(cliente.lavados_usados) || 0;
                 const width = total ? Math.min(100, (used / total) * 100) : 0;
                 const finished = total > 0 && used >= total;
@@ -257,12 +285,13 @@ export function Gestiones({ sector = "Gestoria" }) {
                       <div className="flex flex-wrap items-center gap-2">
                         {waLink(cliente.telefono) && <a className={waClass} href={waLink(cliente.telefono, `Hola ${cliente.nombre}, te escribo de DG Motors por tu membresía ${cliente.membresia}.`)} target="_blank" rel="noreferrer">WhatsApp</a>}
                         <PrimaryButton className="px-3 py-1.5 text-xs" onClick={() => usarLavado(cliente)} disabled={finished}>Usar 1</PrimaryButton>
+                        <GhostButton className="px-3 py-1.5 text-xs" onClick={() => quitarMembresia(cliente)}>Eliminar</GhostButton>
                       </div>
                     </div>
                     <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
                       <div className={`h-full ${finished ? "bg-amber-300" : "bg-[#DC2626]"}`} style={{ width: `${width}%` }} />
                     </div>
-                    <p className={`mt-2 text-xs ${finished ? "text-amber-200" : "text-[#A1A1AA]"}`}>{used} de {total || servicios.find((item) => item.grupo === "membresia" && item.nombre === cliente.membresia)?.usos || 0} lavados</p>
+                    <p className={`mt-2 text-xs ${finished ? "text-amber-200" : "text-[#A1A1AA]"}`}>{used} de {total} lavados{finished ? ". Si no la quitás, a los 4 meses de completada se borra sola de la ficha." : ""}</p>
                   </article>
                 );
               })}
@@ -275,12 +304,33 @@ export function Gestiones({ sector = "Gestoria" }) {
         <Modal title={sector === "Detailing" ? "Detailing" : "Gestoría"} subtitle={editor.etapa} onClose={() => setEditor(null)} wide>
           <form onSubmit={submit} className="p-5 grid sm:grid-cols-2 gap-4">
             {sector === "Detailing" && (
-              <div className="sm:col-span-2 flex flex-wrap gap-2">
-                {servicios.filter((item) => item.grupo === "detailing" || item.grupo === "extra").map((pack) => (
-                  <button key={pack.id} type="button" className="rounded-full border border-white/10 px-3 py-1.5 text-xs hover:border-[#DC2626]" onClick={() => setEditor({ ...editor, titulo: pack.nombre, precio_cobrado: pack.precio, moneda: pack.moneda || "ARS", notas: editor.notas?.trim() ? editor.notas : incluyeDe(pack).map((item) => `• ${item}`).join("\n") })}>
-                    {pack.nombre}{Number(pack.precio) ? ` · ${money(pack.precio, pack.moneda)}` : ""}
-                  </button>
-                ))}
+              <div className="sm:col-span-2 space-y-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA]">Pack</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {packs.map((pack) => (
+                      <button key={pack.id} type="button" className={`rounded-full border px-3 py-1.5 text-xs ${editor.pack_id === pack.id ? "border-[#DC2626] text-white" : "border-white/10 text-[#A1A1AA] hover:border-[#DC2626]"}`} onClick={() => elegirServicio(editor.pack_id === pack.id ? null : pack.id, editor.extra_ids || [])}>
+                        {pack.nombre}{Number(pack.precio) ? ` · ${money(pack.precio, pack.moneda)}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA]">Extras</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {extras.map((extra) => {
+                      const active = (editor.extra_ids || []).includes(extra.id);
+                      return (
+                        <button key={extra.id} type="button" className={`rounded-full border px-3 py-1.5 text-xs ${active ? "border-[#DC2626] text-white" : "border-white/10 text-[#A1A1AA] hover:border-[#DC2626]"}`} onClick={() => {
+                          const ids = editor.extra_ids || [];
+                          elegirServicio(editor.pack_id, active ? ids.filter((id) => id !== extra.id) : [...ids, extra.id]);
+                        }}>
+                          {extra.nombre}{Number(extra.precio) ? ` · ${money(extra.precio, extra.moneda)}` : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
             <Field label="Título"><input className={inputClass} value={editor.titulo || ""} onChange={(event) => setEditor({ ...editor, titulo: event.target.value })} required /></Field>

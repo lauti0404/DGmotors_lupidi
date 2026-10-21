@@ -2,22 +2,23 @@ import { useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { CATEGORIAS_CLIENTE } from "../lib/constants";
-import { catalogoVisible, incluyeDe } from "../lib/catalogo";
+import { MEMBRESIAS_INICIAL, filasVisibles } from "../lib/catalogo";
 import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
 import { categoryList, digitsOnly, money, phoneLocal, plateOnly } from "../lib/format";
 import { ArchivoViewer } from "./ArchivoViewer";
 import { ClienteImagenes } from "./ClienteImagenes";
 import { ImageCropper } from "./ImageCropper";
+import { SelectorArchivo } from "./SelectorArchivo";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
 
 export function ClienteEditor({ initial, onClose, onSaved }) {
   const { user } = useAuth();
-  const { clientes, catalogo_servicios = [], cliente_imagenes = [], save, remove } = useData();
+  const { clientes, membresias = [], cliente_imagenes = [], save, remove } = useData();
   const [editor, setEditor] = useState(initial);
   const [cropSrc, setCropSrc] = useState("");
   const [viewer, setViewer] = useState(false);
   const exists = clientes.some((cliente) => cliente.id === editor.id);
-  const planes = catalogoVisible(catalogo_servicios).filter((item) => item.grupo === "membresia");
+  const planes = filasVisibles(membresias, MEMBRESIAS_INICIAL);
   const plan = planes.find((item) => item.nombre === editor.membresia);
   const withPlan = editor.membresia && editor.membresia !== "Ninguna";
   const selected = categoryList(editor.categoria);
@@ -27,9 +28,7 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
     setEditor({ ...editor, categoria: next.join(", ") });
   }
 
-  async function onFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function onFile(file) {
     if (!file) return;
     try {
       setCropSrc(await comprimirImagenDataUrl(file));
@@ -53,8 +52,8 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
           <button type="button" className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-black" onClick={() => editor.foto_url && setViewer(true)}>
             {editor.foto_url ? <img src={editor.foto_url} alt="" className="h-full w-full object-cover" /> : <span className="px-2 text-center text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">Sin foto</span>}
           </button>
-          <Field label="Foto de perfil" hint="Opcional. Se recorta en círculo, igual que la foto del vehículo. Tocá la foto para verla de cerca.">
-            <input className={inputClass} type="file" accept="image/*" onChange={onFile} />
+          <Field label="Foto de perfil" hint="Opcional. Desde galería, fotos, cámara o archivos. Se recorta en círculo. Tocá la foto para verla de cerca.">
+            <SelectorArchivo onFile={onFile} />
           </Field>
         </div>
         <Field label="Nombre"><input className={inputClass} value={editor.nombre} onChange={(event) => setEditor({ ...editor, nombre: event.target.value })} required /></Field>
@@ -88,12 +87,12 @@ export function ClienteEditor({ initial, onClose, onSaved }) {
         <Field label="Membresía">
           <select className={inputClass} value={editor.membresia} onChange={(event) => {
             const next = planes.find((item) => item.nombre === event.target.value);
-            setEditor({ ...editor, membresia: event.target.value, lavados_totales: next ? next.usos : editor.lavados_totales });
+            setEditor({ ...editor, membresia: event.target.value, lavados_totales: next ? Number(next.lavados_totales) || 0 : 0, lavados_usados: next ? editor.lavados_usados : 0 });
           }}>
             <option>Ninguna</option>
             {planes.map((item) => <option key={item.id} value={item.nombre}>{item.nombre}{Number(item.precio) ? ` · ${money(item.precio, item.moneda)}` : ""}</option>)}
           </select>
-          {plan && <p className="mt-2 text-xs text-[#A1A1AA]">{plan.subtitulo}{incluyeDe(plan).length ? ` · ${incluyeDe(plan).join(" · ")}` : ""}</p>}
+          {plan && <p className="mt-2 text-xs text-[#A1A1AA]">{plan.duracion}{plan.detalle_packs ? ` · ${String(plan.detalle_packs).split("\n").filter(Boolean).join(" · ")}` : ""}</p>}
         </Field>
         {withPlan && (
           <>

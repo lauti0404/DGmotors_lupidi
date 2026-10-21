@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { TIPOS_IMAGEN_CLIENTE } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
 import { ArchivoViewer } from "./ArchivoViewer";
+import { SelectorArchivo } from "./SelectorArchivo";
 
 export function ClienteImagenes({ clienteId }) {
   const { user } = useAuth();
@@ -11,18 +12,14 @@ export function ClienteImagenes({ clienteId }) {
   const [tipo, setTipo] = useState("DNI Frente");
   const [error, setError] = useState("");
   const [viewer, setViewer] = useState(null);
-  const inputRef = useRef(null);
   const rows = cliente_imagenes.filter((item) => item.cliente_id === clienteId);
 
   function choose(next) {
     setTipo(next);
     setError("");
-    inputRef.current?.click();
   }
 
-  async function onFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function onFile(file) {
     if (!file) return;
     try {
       const result = await readDocumentFile(file);
@@ -45,14 +42,16 @@ export function ClienteImagenes({ clienteId }) {
   return (
     <section>
       <h3 className="font-display uppercase tracking-wide">Documentos</h3>
-      <p className="mt-1 text-xs text-[#A1A1AA]">DNI, licencia u otro archivo. Tocá la foto para verla completa.</p>
-      <input ref={inputRef} className="hidden" type="file" accept="image/*,.pdf,application/pdf" onChange={onFile} />
+      <p className="mt-1 text-xs text-[#A1A1AA]">Elegí el dato y después la foto desde galería, fotos, cámara o archivos.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {TIPOS_IMAGEN_CLIENTE.map((item) => (
-          <button key={item} type="button" onClick={() => choose(item)} className="rounded-lg border border-white/10 bg-[#0A0A0A] px-3 py-2 text-xs text-[#A1A1AA] hover:border-white/30 hover:text-white">
-            {rows.some((row) => row.tipo_imagen === item) ? `${item} · cargado` : `Agregar ${item}`}
+          <button key={item} type="button" onClick={() => choose(item)} className={`rounded-lg border px-3 py-2 text-xs ${tipo === item ? "border-[#DC2626] text-white" : "border-white/10 bg-[#0A0A0A] text-[#A1A1AA] hover:border-white/30 hover:text-white"}`}>
+            {rows.some((row) => row.tipo_imagen === item) ? `${item} · cargado` : item}
           </button>
         ))}
+      </div>
+      <div className="mt-3">
+        <SelectorArchivo pdf onFile={onFile} />
       </div>
       {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
       {rows.length > 0 && (

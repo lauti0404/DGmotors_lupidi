@@ -8,6 +8,7 @@ import { comprimirImagenDataUrl } from "../lib/comprimirImagen";
 import { loadImage, removeImage } from "../lib/images";
 import { ClienteEditor } from "./ClienteEditor";
 import { ImageCropper } from "./ImageCropper";
+import { SelectorArchivo } from "./SelectorArchivo";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
 
 function optionalNumber(value) {
@@ -36,9 +37,7 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
     });
   }
 
-  async function onFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function onFile(file) {
     if (!file) return;
     try {
       setCropSrc(await comprimirImagenDataUrl(file));
@@ -60,8 +59,8 @@ export function VehiculoEditor({ initial, onClose, onSaved }) {
     <>
       <Modal title={exists ? "Editar vehículo" : "Nuevo vehículo"} onClose={onClose} wide>
         <form onSubmit={submit} className="p-5 grid sm:grid-cols-2 gap-4">
-          <Field label="Foto" hint="Opcional. Se guarda en el vehículo y la ve todo el equipo. Si no entra en el recuadro, elegís qué parte se ve.">
-            <input className={inputClass} type="file" accept="image/*" onChange={onFile} />
+          <Field label="Foto" hint="Opcional. Desde galería, fotos, cámara o archivos. La ve todo el equipo. Si no entra en el recuadro, elegís qué parte se ve.">
+            <SelectorArchivo onFile={onFile} />
             {image && <img src={image} alt="" className="mt-3 aspect-[2/1] w-full rounded-xl object-cover" />}
             {image && <GhostButton className="mt-3" onClick={() => { setImage(""); setEditor({ ...editor, imagen_url: null }); }}>Quitar foto</GhostButton>}
           </Field>

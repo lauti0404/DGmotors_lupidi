@@ -11,13 +11,16 @@ const CACHE = {
   movimientos_caja: "dg_cache_caja",
   gestion_documentos: "dg_cache_gestion_documentos",
   caja_comprobantes: "dg_cache_caja_comprobantes",
-  catalogo_servicios: "dg_cache_catalogo",
+  membresias: "dg_cache_membresias",
+  detailing_packs: "dg_cache_detailing_packs",
+  detailing_pack_items: "dg_cache_detailing_pack_items",
+  detailing_extras: "dg_cache_detailing_extras",
   cliente_imagenes: "dg_cache_cliente_imagenes",
   perfiles: "dg_cache_perfiles",
 };
 
-const ORDER = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "catalogo_servicios", "cliente_imagenes"];
-const TABLES = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "catalogo_servicios", "cliente_imagenes", "perfiles"];
+const ORDER = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "membresias", "detailing_packs", "detailing_pack_items", "detailing_extras", "cliente_imagenes"];
+const TABLES = ["clientes", "vehiculos", "gestiones", "gestion_documentos", "movimientos_caja", "caja_comprobantes", "membresias", "detailing_packs", "detailing_pack_items", "detailing_extras", "cliente_imagenes", "perfiles"];
 
 const COLUMNS = {
   clientes: ["id", "nombre", "telefono", "email", "dni_cuit", "vehiculo_actual", "patente", "categoria", "membresia", "lavados_usados", "lavados_totales", "ultimo_servicio", "notas", "foto_url", "creado_por", "actualizado_en", "creado_en"],
@@ -26,7 +29,10 @@ const COLUMNS = {
   movimientos_caja: ["id", "fecha", "tipo", "categoria", "concepto", "moneda", "monto", "metodo_pago", "vehiculo_id", "gestion_id", "cliente_id", "registrado_por", "actualizado_en", "creado_en"],
   gestion_documentos: ["id", "gestion_id", "tipo_documento", "estado_documento", "url_archivo", "nombre_archivo", "observaciones", "subido_por", "actualizado_en", "creado_en"],
   caja_comprobantes: ["id", "movimiento_id", "tipo_comprobante", "nro_comprobante", "url_archivo", "nombre_archivo", "subido_por", "creado_en"],
-  catalogo_servicios: ["id", "clave", "grupo", "nombre", "subtitulo", "precio", "moneda", "incluye", "usos", "orden", "actualizado_en", "creado_en"],
+  membresias: ["id", "nombre", "duracion", "lavados_totales", "detalle_packs", "moneda", "precio", "creado_en", "actualizado_en"],
+  detailing_packs: ["id", "nombre", "subtitulo", "moneda", "precio", "orden", "creado_en", "actualizado_en"],
+  detailing_pack_items: ["id", "pack_id", "descripcion_item", "orden"],
+  detailing_extras: ["id", "nombre", "descripcion", "moneda", "precio", "creado_en", "actualizado_en"],
   cliente_imagenes: ["id", "cliente_id", "tipo_imagen", "url_imagen", "subido_por", "creado_en"],
 };
 
@@ -37,7 +43,10 @@ const INTS = {
   movimientos_caja: [],
   gestion_documentos: [],
   caja_comprobantes: [],
-  catalogo_servicios: ["usos", "orden"],
+  membresias: ["lavados_totales"],
+  detailing_packs: ["orden"],
+  detailing_pack_items: ["orden"],
+  detailing_extras: [],
   cliente_imagenes: [],
 };
 
@@ -48,7 +57,10 @@ const NUMBERS = {
   movimientos_caja: ["monto"],
   gestion_documentos: [],
   caja_comprobantes: [],
-  catalogo_servicios: ["precio"],
+  membresias: ["precio"],
+  detailing_packs: ["precio"],
+  detailing_pack_items: [],
+  detailing_extras: ["precio"],
   cliente_imagenes: [],
 };
 
@@ -210,7 +222,11 @@ export function enqueue(op) {
 
 export function sortQueue(queue) {
   return [...queue].sort((a, b) => {
-    const order = ORDER.indexOf(a.table) - ORDER.indexOf(b.table);
+    const aDelete = a.action === "DELETE" ? 1 : 0;
+    const bDelete = b.action === "DELETE" ? 1 : 0;
+    if (aDelete !== bDelete) return aDelete - bDelete;
+    const direction = aDelete ? -1 : 1;
+    const order = (ORDER.indexOf(a.table) - ORDER.indexOf(b.table)) * direction;
     if (order !== 0) return order;
     return a.timestamp - b.timestamp;
   });
@@ -275,8 +291,7 @@ export async function pullAll() {
   for (const table of TABLES) {
     const { data, error: tableError } = await supabase.from(table).select("*");
     if (tableError) {
-      const missing = /does not exist|schema cache|42P01/i.test(tableError.message || "");
-      if (!(table === "catalogo_servicios" && missing)) error = tableError;
+      error = tableError;
       continue;
     }
     rows[table] = data || [];

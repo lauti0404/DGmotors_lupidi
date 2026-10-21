@@ -6,6 +6,7 @@ import { readDocumentFile } from "../lib/images";
 import { balanceOf, formatDate, money, todayISO, vehicleLabel } from "../lib/format";
 import { blankCliente, blankMovimiento, blankVehiculo } from "../lib/records";
 import { ArchivoViewer } from "../components/ArchivoViewer";
+import { SelectorArchivo } from "../components/SelectorArchivo";
 import { ClienteEditor } from "../components/ClienteEditor";
 import { ClienteFields, VehiculoFields } from "../components/PartyFields";
 import { VehiculoEditor } from "../components/VehiculoEditor";
@@ -102,9 +103,7 @@ export function Caja() {
     setComprobante(caja_comprobantes.find((item) => item.movimiento_id === row?.id) || { tipo_comprobante: "Ticket / Recibo", nro_comprobante: "", url_archivo: "", nombre_archivo: "" });
   }
 
-  async function onComprobante(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function onComprobante(file) {
     if (!file) return;
     try {
       const result = await readDocumentFile(file);
@@ -300,8 +299,8 @@ export function Caja() {
                 <Field label="Número" hint="Opcional. Ej: 0001-00004521">
                   <input className={inputClass} placeholder="0001-00004521" value={comprobante.nro_comprobante || ""} onChange={(event) => setComprobante({ ...comprobante, nro_comprobante: event.target.value })} />
                 </Field>
-                <Field label="Archivo" hint="Foto o PDF.">
-                  <input className={inputClass} type="file" accept="image/*,.pdf,application/pdf" onChange={onComprobante} />
+                <Field label="Archivo" hint="Galería, fotos, cámara o un PDF desde archivos.">
+                  <SelectorArchivo pdf onFile={onComprobante} />
                 </Field>
                 <div>
                   <span className="block text-[11px] uppercase tracking-[0.16em] text-[#A1A1AA] underline decoration-white/30 underline-offset-4">Vista:</span>

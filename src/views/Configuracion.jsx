@@ -1,37 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
-import { catalogoVisible } from "../lib/catalogo";
+import { CatalogoComercial } from "../components/CatalogoComercial";
 import { supabase } from "../lib/supabase";
 import { InstallButton, Field, PrimaryButton, inputClass } from "../components/ui";
 
 export function Configuracion({ admin = false }) {
   const { updatePassword, user } = useAuth();
-  const { perfiles, catalogo_servicios = [], save, syncNow } = useData();
-  const [items, setItems] = useState(() => catalogoVisible(catalogo_servicios));
-  const [dirty, setDirty] = useState(false);
+  const { perfiles, membresias = [], detailing_packs = [], detailing_pack_items = [], detailing_extras = [], save, remove, syncNow } = useData();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [account, setAccount] = useState({ nombre: "", email: "", password: "", rol: "operador" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const canCreate = admin;
-
-  useEffect(() => {
-    if (!dirty) setItems(catalogoVisible(catalogo_servicios));
-  }, [catalogo_servicios, dirty]);
-
-  function updateItem(id, patch) {
-    setDirty(true);
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
-  }
-
-  function saveCatalog() {
-    setError("");
-    for (const item of items) save("catalogo_servicios", item);
-    setDirty(false);
-    setMessage("Precios guardados. Cuando la tabla esté en Supabase, el resto del equipo los recibe al sincronizar.");
-  }
 
   async function changePassword(event) {
     event.preventDefault();
@@ -100,29 +82,16 @@ export function Configuracion({ admin = false }) {
         <InstallButton />
       </section>
 
-      {canCreate && <section className="bg-[#141414] border border-white/10 rounded-2xl p-5 space-y-4 lg:col-span-2">
-        <h2 className="font-display text-2xl uppercase">Precios y lo que incluye</h2>
-        <p className="text-sm text-[#A1A1AA]">Solo el admin los cambia. Detailing, extras y membresías usan estos datos al crear un trabajo o una ficha. Para que los empleados los reciban, hay que crear la tabla `catalogo_servicios` en Supabase.</p>
-        {["detailing", "extra", "membresia"].map((grupo) => (
-          <div key={grupo} className="space-y-3">
-            <h3 className="font-display text-lg uppercase tracking-wide text-[#DC2626]">{grupo === "detailing" ? "Detailing" : grupo === "extra" ? "Extras" : "Membresías"}</h3>
-            {items.filter((item) => item.grupo === grupo).map((item) => (
-              <article key={item.id} className="grid gap-3 rounded-xl border border-white/10 p-4 md:grid-cols-2">
-                <Field label="Nombre"><input className={inputClass} value={item.nombre || ""} onChange={(event) => updateItem(item.id, { nombre: event.target.value })} /></Field>
-                <Field label="Subtítulo"><input className={inputClass} value={item.subtitulo || ""} onChange={(event) => updateItem(item.id, { subtitulo: event.target.value })} /></Field>
-                <Field label="Precio"><input className={inputClass} type="number" value={item.precio ?? 0} onChange={(event) => updateItem(item.id, { precio: event.target.value })} /></Field>
-                {grupo === "membresia" && <Field label="Servicios del plan" hint="Cantidad que se propone al elegir la membresía."><input className={inputClass} type="number" value={item.usos ?? 0} onChange={(event) => updateItem(item.id, { usos: event.target.value })} /></Field>}
-                <div className={grupo === "membresia" ? "md:col-span-2" : ""}>
-                  <Field label="Incluye" hint="Un ítem por línea.">
-                    <textarea className={`${inputClass} min-h-28`} value={item.incluye || ""} onChange={(event) => updateItem(item.id, { incluye: event.target.value })} />
-                  </Field>
-                </div>
-              </article>
-            ))}
-          </div>
-        ))}
-        <PrimaryButton onClick={saveCatalog}>Guardar precios</PrimaryButton>
-      </section>}
+      {canCreate && (
+        <CatalogoComercial
+          membresias={membresias}
+          detailing_packs={detailing_packs}
+          detailing_pack_items={detailing_pack_items}
+          detailing_extras={detailing_extras}
+          save={save}
+          remove={remove}
+        />
+      )}
 
       {canCreate && <section className="bg-[#141414] border border-white/10 rounded-2xl p-5 space-y-4 lg:col-span-2">
         <h2 className="font-display text-2xl uppercase">Cuentas internas</h2>

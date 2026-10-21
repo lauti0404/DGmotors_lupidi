@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { CATEGORIAS_CLIENTE } from "../lib/constants";
-import { catalogoVisible } from "../lib/catalogo";
+import { MEMBRESIAS_INICIAL, filasVisibles } from "../lib/catalogo";
 import { ArchivoViewer } from "../components/ArchivoViewer";
 import { ClienteEditor } from "../components/ClienteEditor";
 import { ClienteImagenes } from "../components/ClienteImagenes";
@@ -12,8 +12,8 @@ import { Avatar, Empty, GhostButton, Modal, Pill, Plate, PrimaryButton, inputCla
 
 export function Clientes() {
   const { user } = useAuth();
-  const { clientes, vehiculos, gestiones, movimientos_caja, catalogo_servicios = [] } = useData();
-  const planes = ["Todas", "Ninguna", ...catalogoVisible(catalogo_servicios).filter((item) => item.grupo === "membresia").map((item) => item.nombre)];
+  const { clientes, vehiculos, gestiones, movimientos_caja, membresias = [] } = useData();
+  const planes = ["Todas", "Ninguna", ...filasVisibles(membresias, MEMBRESIAS_INICIAL).map((item) => item.nombre)];
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("Todas");
   const [membresia, setMembresia] = useState("Todas");

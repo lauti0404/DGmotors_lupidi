@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ESTADOS_DOCUMENTO, TIPOS_DOCUMENTO } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
+import { SelectorArchivo } from "./SelectorArchivo";
 import { Field, GhostButton, Modal, PrimaryButton, inputClass } from "./ui";
 
 export function DocumentoEditor({ initial, onClose, onSaved, onDelete }) {
@@ -8,9 +9,7 @@ export function DocumentoEditor({ initial, onClose, onSaved, onDelete }) {
   const [error, setError] = useState("");
   const isImage = String(editor.url_archivo || "").startsWith("data:image/");
 
-  async function onFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  async function onFile(file) {
     if (!file) return;
     try {
       const result = await readDocumentFile(file);
@@ -40,8 +39,8 @@ export function DocumentoEditor({ initial, onClose, onSaved, onDelete }) {
             {ESTADOS_DOCUMENTO.map((estado) => <option key={estado}>{estado}</option>)}
           </select>
         </Field>
-        <Field label="Archivo" hint="Foto o PDF. Si es una foto, se achica para que se pueda ver y descargar.">
-          <input className={inputClass} type="file" accept="image/*,.pdf,application/pdf" onChange={onFile} />
+        <Field label="Archivo" hint="Galería, fotos, cámara o archivos. Si es una foto, se achica para que se pueda ver y descargar.">
+          <SelectorArchivo pdf onFile={onFile} />
         </Field>
         {error && <p className="text-sm text-red-300">{error}</p>}
         {isImage && <img src={editor.url_archivo} alt="" className="max-h-64 w-full rounded-xl object-contain bg-black" />}
