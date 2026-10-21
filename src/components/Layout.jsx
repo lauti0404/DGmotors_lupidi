@@ -44,6 +44,55 @@ export function Layout() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [section]);
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    let y = 0;
+    let locked = false;
+    const previous = {};
+    const unlock = () => {
+      if (!locked) return;
+      const restore = y;
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      document.body.style.position = previous.position;
+      document.body.style.top = previous.top;
+      document.body.style.left = previous.left;
+      document.body.style.right = previous.right;
+      document.body.style.overflow = previous.overflow;
+      locked = false;
+      const apply = () => window.scrollTo(0, restore);
+      apply();
+      requestAnimationFrame(() => {
+        apply();
+        requestAnimationFrame(apply);
+      });
+    };
+    const sync = () => {
+      if (!open || !media.matches) {
+        unlock();
+        return;
+      }
+      if (locked) return;
+      y = window.scrollY;
+      previous.position = document.body.style.position;
+      previous.top = document.body.style.top;
+      previous.left = document.body.style.left;
+      previous.right = document.body.style.right;
+      previous.overflow = document.body.style.overflow;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${y}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.overflow = "hidden";
+      locked = true;
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+      unlock();
+    };
+  }, [open]);
+
   function go(id) {
     setSection(id);
     setOpen(false);
@@ -51,7 +100,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-[#151515] text-white">
-      {open && <div className="fixed inset-0 z-30 bg-black/70 lg:hidden" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 z-30 touch-none bg-black/70 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`fixed top-0 left-0 z-40 h-dvh w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="h-0.5 bg-[#DC2626]" />
         <div className="relative px-5 py-6 flex items-center justify-center">
