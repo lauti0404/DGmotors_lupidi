@@ -10,6 +10,33 @@ function openCreate(kind) {
   sessionStorage.setItem("dg_quick_create", kind);
 }
 
+function useNarrow() {
+  const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 900px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const sync = () => setNarrow(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+  return narrow;
+}
+
+function Meter({ label, value, max, tone, moneda }) {
+  const width = value > 0 && max > 0 ? Math.max(8, (value / max) * 100) : 0;
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-[#A1A1AA]">{label}</span>
+        <span className="text-xs tabular-nums">{money(value, moneda)}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full" style={{ width: `${width}%`, background: tone }} />
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard({ onNavigate }) {
   const { vehiculos, gestiones, movimientos_caja, clientes, pending } = useData();
   const [moneda, setMoneda] = useState("ARS");
@@ -49,6 +76,9 @@ export function Dashboard({ onNavigate }) {
   };
   const alertMark = { danger: "bg-[#DC2626]", warn: "bg-amber-300", info: "bg-sky-300" };
 
+  const narrow = useNarrow();
+  const peak = Math.max(1, ...chart.flatMap((row) => [row.ingresos, row.egresos]));
+
   function go(section, kind) {
     openCreate(kind);
     onNavigate(section);
@@ -82,26 +112,40 @@ export function Dashboard({ onNavigate }) {
       </div>
 
       <section className="bg-[#141414] border border-white/10 rounded-2xl p-4">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h2 className="font-display text-xl uppercase tracking-wide">Ingresos y egresos por rubro</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="min-w-0 font-display text-lg uppercase leading-tight tracking-wide sm:text-xl">Ingresos y egresos por rubro</h2>
           <div className="flex gap-2">
             {["ARS", "USD"].map((item) => (
               <button key={item} type="button" onClick={() => setMoneda(item)} className={`rounded-full px-3 py-1 text-xs border ${moneda === item ? "bg-[#DC2626] border-[#DC2626]" : "border-white/10 text-[#A1A1AA]"}`}>{item}</button>
             ))}
           </div>
         </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart}>
-              <CartesianGrid stroke="#1F1F1F" vertical={false} />
-              <XAxis dataKey="name" stroke="#A1A1AA" fontSize={11} tickLine={false} />
-              <YAxis stroke="#A1A1AA" fontSize={11} tickLine={false} />
-              <Tooltip contentStyle={{ background: "#141414", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} />
-              <Bar dataKey="ingresos" fill="#DC2626" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="egresos" fill="#A1A1AA" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {narrow ? (
+          <ul className="space-y-4">
+            {chart.map((row) => (
+              <li key={row.name} className="border-b border-white/5 pb-4 last:border-0 last:pb-0">
+                <p className="font-display text-base uppercase tracking-wide">{row.name}</p>
+                <div className="mt-2 space-y-2">
+                  <Meter label="Ingresos" value={row.ingresos} max={peak} tone="#DC2626" moneda={moneda} />
+                  <Meter label="Egresos" value={row.egresos} max={peak} tone="#A1A1AA" moneda={moneda} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chart} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                <CartesianGrid stroke="#1F1F1F" vertical={false} />
+                <XAxis dataKey="name" interval={0} stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#A1A1AA" fontSize={11} tickLine={false} axisLine={false} width={48} />
+                <Tooltip contentStyle={{ background: "#141414", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} />
+                <Bar dataKey="ingresos" fill="#DC2626" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="egresos" fill="#A1A1AA" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </section>
 
       <section className="bg-[#141414] border border-white/10 rounded-2xl p-4">
