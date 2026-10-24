@@ -1,8 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { loadProfile, saveProfile } from "../lib/offline";
-import { supabase, supabaseConfigured } from "../lib/supabase";
+import { loadStoredAuthUser, supabase, supabaseConfigured } from "../lib/supabase";
 
 const AuthContext = createContext(null);
+
+function sessionRejected(error) {
+  const text = `${error?.code || ""} ${error?.message || ""}`;
+  return /invalid_grant|refresh_token_not_found|session_not_found|user_not_found|user_banned|bad_jwt/i.test(text);
+}
 
 function authError(error) {
   const message = String(error?.message || "");
@@ -37,6 +42,12 @@ export function AuthProvider({ children }) {
       saveProfile(data);
     }
 
+    function applyStored(stored) {
+      const cached = loadProfile();
+      setUser(stored.user);
+      if (cached?.id === stored.user.id) setProfile(cached);
+    }
+
     async function boot() {
       if (!supabase) {
         const cached = loadProfile();
@@ -48,21 +59,49 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
+      const stored = loadStoredAuthUser();
+      const tokenReady = stored && stored.expiresAt * 1000 - Date.now() > 90 * 1000;
+      const openedFromMemory = Boolean(stored && (!navigator.onLine || !tokenReady));
+      if (openedFromMemory) {
+        applyStored(stored);
+        if (active) setReady(true);
+      }
+
+      const { data, error } = await supabase.auth.getSession();
       const sessionUser = data.session?.user || null;
       if (!active) return;
       if (sessionUser) {
         setUser(sessionUser);
         await hydrate(sessionUser);
+        if (openedFromMemory) {
+          window.dispatchEvent(new Event("dg-session-ready"));
+          window.setTimeout(() => window.dispatchEvent(new Event("dg-session-ready")), 400);
+        }
+      } else if (!sessionRejected(error) && stored) {
+        applyStored(stored);
       } else if (!navigator.onLine) {
         const cached = loadProfile();
         if (cached && !cached.local) {
           setUser({ id: cached.id, email: cached.email, offline: true });
           setProfile(cached);
         }
+      } else if (sessionRejected(error)) {
+        saveProfile(null);
+        setUser(null);
+        setProfile(null);
       }
       if (active) setReady(true);
     }
+
+    const onOnline = () => {
+      if (!supabase) return;
+      void supabase.auth.getSession().then(({ data }) => {
+        if (!active || !data.session?.user) return;
+        setUser(data.session.user);
+        void hydrate(data.session.user);
+        window.dispatchEvent(new Event("dg-session-ready"));
+      });
+    };
 
     const subscription = supabase?.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
@@ -77,9 +116,11 @@ export function AuthProvider({ children }) {
       }
     });
 
+    window.addEventListener("online", onOnline);
     void boot();
     return () => {
       active = false;
+      window.removeEventListener("online", onOnline);
       subscription?.data.subscription.unsubscribe();
     };
   }, []);

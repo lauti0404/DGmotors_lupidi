@@ -67,8 +67,10 @@ export function DataProvider({ children, userId }) {
       void syncNow();
     };
     const onOffline = () => setOnline(false);
+    const onSession = () => { void syncNow(); };
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
+    window.addEventListener("dg-session-ready", onSession);
     void syncNow();
     const timer = window.setInterval(() => {
       if (navigator.onLine && loadQueue().length) void syncNow();
@@ -76,6 +78,7 @@ export function DataProvider({ children, userId }) {
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
+      window.removeEventListener("dg-session-ready", onSession);
       window.clearInterval(timer);
     };
   }, [syncNow, userId]);
