@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useEffect, useMemo, useState } from "react";
-import { RUBROS, modalidadCanonica } from "../lib/constants";
+import { RUBROS, modalidadCanonica, rubroDe } from "../lib/constants";
 import { dismissAlert, syncAlerts } from "../lib/alerts";
 import { balanceOf, formatDateTime, formatWhen, money } from "../lib/format";
 import { useAuth } from "../context/Auth";
@@ -59,7 +59,7 @@ export function Dashboard({ onNavigate }) {
   const gestoria = activas.filter((gestion) => gestion.sector === "Gestoria").length;
 
   const chart = useMemo(() => RUBROS.map((rubro) => {
-    const rows = movimientos_caja.filter((row) => row.moneda === moneda && rubro.categories.includes(row.categoria));
+    const rows = movimientos_caja.filter((row) => row.moneda === moneda && rubroDe(row.categoria)?.id === rubro.id);
     const sum = (tipo) => rows.filter((row) => row.tipo === tipo).reduce((total, row) => total + (Number(row.monto) || 0), 0);
     return { name: rubro.label, ingresos: sum("Ingreso"), egresos: sum("Egreso") };
   }), [movimientos_caja, moneda]);

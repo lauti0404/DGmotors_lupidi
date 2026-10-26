@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
-import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE, categoriaVisible, categoriasElegibles, modalidadCanonica } from "../lib/constants";
+import { METODOS_PAGO, RUBROS, TIPOS_CAJA, TIPOS_COMPROBANTE, categoriaVisible, categoriasElegibles, modalidadCanonica, rubroDe } from "../lib/constants";
 import { readDocumentFile } from "../lib/images";
 import { amountOnly, balanceOf, formatDate, money, phoneError, phoneLocal, ticketOnly, todayISO, vehicleLabel } from "../lib/format";
 import { autorMovimiento } from "../lib/offline";
@@ -82,8 +82,7 @@ export function Caja() {
   }, [user]);
 
   const scoped = useMemo(() => movimientos_caja.filter((row) => {
-    const group = RUBROS.find((item) => item.id === rubro);
-    if (group && !group.categories.includes(row.categoria)) return false;
+    if (rubro !== "todos" && rubroDe(row.categoria)?.id !== rubro) return false;
     if (moneda !== "Todas" && row.moneda !== moneda) return false;
     if (metodo !== "Todos" && row.metodo_pago !== metodo) return false;
     const day = String(row.fecha || "").slice(0, 10);
@@ -337,9 +336,12 @@ export function Caja() {
             </Field>
             <Field label="Categoría">
               <select className={inputClass} value={editor.categoria} onChange={(event) => setEditor({ ...editor, categoria: event.target.value })}>
+                {editor.categoria && !categoriasElegibles().some((group) => group.categories.includes(editor.categoria)) && (
+                  <option value={editor.categoria}>{categoriaVisible(editor.categoria)}</option>
+                )}
                 {categoriasElegibles().map((group) => (
                   <optgroup key={group.id} label={group.label}>
-                    {group.categories.map((item) => <option key={item}>{item}</option>)}
+                    {group.categories.map((item) => <option key={item} value={item}>{item}</option>)}
                   </optgroup>
                 ))}
               </select>

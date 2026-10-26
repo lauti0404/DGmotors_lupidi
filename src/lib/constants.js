@@ -114,8 +114,23 @@ export function categoriasElegibles() {
   }));
 }
 
+function claveRubro(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export function rubroDe(categoria) {
-  return RUBROS.find((rubro) => rubro.categories.includes(categoria)) || null;
+  const value = claveRubro(categoria);
+  if (!value) return null;
+  if (value === "gastos varios") return RUBROS.find((rubro) => rubro.id === "operativos") || null;
+  return RUBROS.find((rubro) => {
+    if (claveRubro(rubro.label) === value || claveRubro(rubro.id) === value) return true;
+    return rubro.categories.some((item) => claveRubro(item) === value || claveRubro(categoriaVisible(item)) === value);
+  }) || null;
 }
 
 export const CHECKLIST_VEHICULO = { detailing: false, fotos: false, publicado: false };

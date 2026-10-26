@@ -85,7 +85,7 @@ function MovimientoFields({ title, checked, onToggle, fields, onChange, grupos }
             <select className={inputClass} value={fields.categoria} onChange={(event) => set({ categoria: event.target.value })}>
               {grupos.map((group) => (
                 <optgroup key={group.id} label={group.label}>
-                  {group.categories.map((item) => <option key={item}>{item}</option>)}
+                  {group.categories.map((item) => <option key={item} value={item}>{item}</option>)}
                 </optgroup>
               ))}
             </select>
