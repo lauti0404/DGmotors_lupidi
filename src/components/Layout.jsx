@@ -1,5 +1,5 @@
 import { Car, ClipboardList, LayoutDashboard, LogOut, Menu, Settings, Sparkles, Users, Wallet, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/Auth";
 import { useData } from "../context/Data";
 import { Caja } from "../views/Caja";
@@ -21,6 +21,15 @@ const NAV = [
   { id: "config", label: "Configuración", icon: Settings, hint: "Precios y cuentas", admin: true },
 ];
 
+function esCelular() {
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /Mobile/i.test(ua)) return true;
+  const escritorio = /Windows NT|Macintosh|Linux|CrOS|X11/i.test(ua) && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (escritorio) return false;
+  return window.matchMedia("(hover: none) and (pointer: coarse) and (max-width: 1023px)").matches;
+}
+
 const COPY = {
   dashboard: ["Dashboard", "Caja, stock y gestiones del día."],
   stock: ["Stock de vehículos", "Stock propio y consigna."],
@@ -36,6 +45,9 @@ export function Layout() {
   const data = useData();
   const [section, setSection] = useState("dashboard");
   const [open, setOpen] = useState(false);
+  const [celular] = useState(esCelular);
+  const asideRef = useRef(null);
+  const veilRef = useRef(null);
   const isAdmin = profile?.rol === "admin" || profile?.local;
   const nav = NAV.map((item) => item.id === "config" && !isAdmin ? { ...item, label: "Mi cuenta", hint: "Tu clave" } : item);
   const [title, subtitle] = section === "config" && !isAdmin ? ["Mi cuenta", "Tu clave."] : (COPY[section] || ["Mi cuenta", "Tu clave."]);
@@ -67,7 +79,7 @@ export function Layout() {
       });
     };
     const sync = () => {
-      if (!open || !media.matches) {
+      if (!open || !celular || !media.matches) {
         unlock();
         return;
       }
@@ -91,7 +103,18 @@ export function Layout() {
       media.removeEventListener("change", sync);
       unlock();
     };
-  }, [open]);
+  }, [open, celular]);
+
+  useEffect(() => {
+    if (celular) return;
+    const nodes = [asideRef.current, veilRef.current].filter(Boolean);
+    const onWheel = (event) => {
+      window.scrollBy(0, event.deltaY);
+      event.preventDefault();
+    };
+    nodes.forEach((node) => node.addEventListener("wheel", onWheel, { passive: false }));
+    return () => nodes.forEach((node) => node.removeEventListener("wheel", onWheel));
+  }, [celular, open]);
 
   function go(id) {
     setSection(id);
@@ -100,8 +123,8 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-[#151515] text-white">
-      {open && <div className="fixed inset-0 z-30 touch-none bg-black/70 lg:hidden" onClick={() => setOpen(false)} />}
-      <aside className={`fixed top-0 left-0 z-40 h-dvh w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      {open && <div ref={veilRef} className={`fixed inset-0 z-30 bg-black/70 lg:hidden ${celular ? "touch-none" : ""}`} onClick={() => setOpen(false)} />}
+      <aside ref={asideRef} className={`fixed top-0 left-0 z-40 h-dvh w-[270px] bg-[#151515] border-r border-white/5 flex flex-col transition-transform ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="safe-drawer-top">
           <div className="h-0.5 bg-[#DC2626]" />
           <div className="relative flex items-center justify-center px-5 pb-4 lg:py-6">
@@ -111,7 +134,7 @@ export function Layout() {
             </button>
           </div>
         </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 space-y-1">
+        <nav className={`min-h-0 flex-1 px-3 space-y-1 ${celular ? "overflow-y-auto" : "overflow-visible"}`}>
           {nav.map((item) => {
             const Icon = item.icon;
             const active = section === item.id;
