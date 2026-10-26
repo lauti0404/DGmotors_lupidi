@@ -1,4 +1,4 @@
-export const CATEGORIAS_CLIENTE = ["Comprador", "Vendedor Consigna", "Cliente Detailing", "Socio Membresía"];
+export const CATEGORIAS_CLIENTE = ["Comprador", "Vendedor Consigna", "Cliente Detailing", "Cliente Gestoría", "Socio Membresía"];
 export const MEMBRESIAS = ["Ninguna", "Stone", "Bronze", "Silver", "Gold", "Diamond"];
 export const LAVADOS_SUGERIDOS = { Ninguna: 0, Stone: 2, Bronze: 3, Silver: 6, Gold: 9, Diamond: 12 };
 
