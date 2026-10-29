@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CatalogoStock } from "../components/CatalogoStock";
 import { ClienteEditor } from "../components/ClienteEditor";
 import { ClienteSearchSelect } from "../components/ClienteSearchSelect";
 import { ConfirmacionCaja } from "../components/ConfirmacionCaja";
@@ -31,6 +32,7 @@ export function Stock() {
   const [cajaVenta, setCajaVenta] = useState(false);
   const [saleError, setSaleError] = useState("");
   const [newCliente, setNewCliente] = useState(false);
+  const [catalogo, setCatalogo] = useState(false);
 
   useEffect(() => {
     if (consumeQuick("vehiculo")) setEditor(blankVehiculo(user?.id));
@@ -105,7 +107,10 @@ export function Stock() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input className={`${inputClass} max-w-xs`} placeholder="Buscar marca, modelo o patente" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <PrimaryButton onClick={() => setEditor(blankVehiculo(user?.id))}>Publicar vehículo</PrimaryButton>
+        <div className="flex flex-wrap gap-2">
+          <GhostButton onClick={() => setCatalogo(true)}>Descargar catálogo</GhostButton>
+          <PrimaryButton onClick={() => setEditor(blankVehiculo(user?.id))}>Publicar vehículo</PrimaryButton>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {["Todos", ...ESTADOS_VEHICULO].map((item) => <Pill key={item} active={estado === item} onClick={() => setEstado(item)}>{item}</Pill>)}
@@ -157,6 +162,8 @@ export function Stock() {
         </div>
       )}
 
+      {catalogo && <CatalogoStock vehiculos={vehiculos} onClose={() => setCatalogo(false)} />}
+
       {editor && <VehiculoEditor initial={editor} onClose={() => setEditor(null)} />}
 
       {detail && (
@@ -184,7 +191,7 @@ export function Stock() {
               ))}
             </dl>
             {detail.notas && <p className="text-sm">{detail.notas}</p>}
-            <GhostButton onClick={() => { setEditor(detail); setDetail(null); }}>Editar</GhostButton>
+            <GhostButton onClick={() => { setEditor(detail); setDetail(null); }}>Editar</GhostButton>}
           </div>
         </Modal>
       )}
