@@ -191,7 +191,7 @@ export function Stock() {
               ))}
             </dl>
             {detail.notas && <p className="text-sm">{detail.notas}</p>}
-            <GhostButton onClick={() => { setEditor(detail); setDetail(null); }}>Editar</GhostButton>}
+            <GhostButton onClick={() => { setEditor(detail); setDetail(null); }}>Editar</GhostButton>
           </div>
         </Modal>
       )}
